@@ -33,7 +33,7 @@ const Ranking = {
     const idx = parseInt(document.getElementById('ranking-mes').value);
     const m = c.meses[idx];
     const hojeS = c.hojeStr;
-    const sems = (c.semanas || []).filter(s => s.inicio <= m.fim && s.fim >= m.inicio);
+    const sems = (c.semanas || []).filter(s => s.strIni <= m.strFim && s.strFim >= m.strIni);
     let svIdx = null;
     sems.forEach((s, i) => { if (hojeS >= s.strIni && hojeS <= s.strFim) svIdx = i; });
 
