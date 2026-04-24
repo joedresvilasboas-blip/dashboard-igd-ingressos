@@ -2,18 +2,25 @@
 const Dashboard = {
   config: null,
   dados: null,
-  filtros: { mes: '', evento: '', canal: '', semana: '', categoria: '' },
+  // filtros com arrays para múltipla seleção
+  filtros: { mes: [], evento: [], canal: ['VA SALES','RC SALES'], semana: [], categoria: [] },
   charts: {},
+  _dropAberto: null,
 
   async load() {
     const el = document.getElementById('dash-content');
     el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
-
     try {
-      // Carrega config (meses, semanas, eventos) e dados
       if (!this.config) this.config = await API.get('config');
       this.renderFiltros();
       await this.atualizar();
+      // Fecha dropdown ao clicar fora
+      document.addEventListener('click', e => {
+        if (this._dropAberto && !this._dropAberto.contains(e.target)) {
+          this._dropAberto.querySelector('.dash-dropdown').style.display = 'none';
+          this._dropAberto = null;
+        }
+      });
     } catch(e) {
       el.innerHTML = `<div class="empty"><div class="empty-title">Erro ao carregar</div><div class="empty-sub">${e.message}</div></div>`;
     }
@@ -23,75 +30,132 @@ const Dashboard = {
     const el = document.getElementById('dash-filtros');
     if (!el) return;
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
-    if (el.style.display === 'block' && !el.innerHTML) this.renderFiltros();
   },
 
   renderFiltros() {
     const c = this.config;
-    const topbar = document.getElementById('dash-periodo');
-    if (topbar) topbar.textContent = 'Todos os períodos';
-
-    // Monta opções
-    const meses    = (c.meses    || []).map(m => m.nome);
-    const semanas  = (c.semanas  || []).map(s => ({ label: 'Sem ' + s.num + ' · ' + s.label, val: s.num }));
-    const eventos  = (c.eventos  || []).map(e => e.nome);
-    const canais   = ['VA SALES','RC SALES','TRÁFEGO','ORGÂNICO','MARKETING','CONTEÚDO','SUPORTE','GRATUITO'];
-    const cats     = ['NORMAL','VIP','UPGRADE'];
+    const meses   = (c.meses   || []).map(m => m.nome);
+    const semanas = (c.semanas || []).map(s => `Sem ${s.num} · ${s.label}`);
+    const eventos = (c.eventos || []).map(e => e.nome);
+    const canais  = ['VA SALES','RC SALES','TRÁFEGO','ORGÂNICO','MARKETING','CONTEÚDO','SUPORTE','GRATUITO'];
+    const cats    = ['NORMAL','VIP','UPGRADE','ESSENTIAL'];
 
     const filtrosEl = document.getElementById('dash-filtros');
     if (!filtrosEl) return;
 
     filtrosEl.innerHTML = `
-      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 20px;background:var(--bg-2);border-bottom:1px solid var(--border);">
-        ${this._select('dash-f-mes',     'Mês',       meses,   '')}
-        ${this._select('dash-f-sem',     'Semana',    semanas, '', true)}
-        ${this._select('dash-f-evento',  'Evento',    eventos, '')}
-        ${this._select('dash-f-canal',   'Canal',     canais,  '')}
-        ${this._select('dash-f-cat',     'Categoria', cats,    '')}
-        <button class="btn btn-sm btn-secondary" onclick="Dashboard.limparFiltros()" style="align-self:flex-end">Limpar</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px 20px;background:var(--bg-2);border-bottom:1px solid var(--border);">
+        ${this._dropdown('dash-f-mes',    'Mês',       meses,   'mes',       [])}
+        ${this._dropdown('dash-f-sem',    'Semana',    semanas, 'semana',    [])}
+        ${this._dropdown('dash-f-evento', 'Evento',    eventos, 'evento',    [])}
+        ${this._dropdown('dash-f-canal',  'Canal',     canais,  'canal',     ['VA SALES','RC SALES'])}
+        ${this._dropdown('dash-f-cat',    'Categoria', cats,    'categoria', [])}
+        <button class="btn btn-sm btn-secondary" onclick="Dashboard.limparFiltros()">Limpar</button>
       </div>`;
-
-    ['mes','sem','evento','canal','cat'].forEach(id => {
-      const el = document.getElementById('dash-f-' + id);
-      if (el) el.onchange = () => {
-        this.filtros[id === 'sem' ? 'semana' : id === 'cat' ? 'categoria' : id] = el.value;
-        this.atualizar();
-      };
-    });
   },
 
-  _select(id, label, items, val, isSemana) {
-    const opts = items.map(i => {
-      const v = isSemana ? i.val : i;
-      const l = isSemana ? i.label : i;
-      return `<option value="${v}">${l}</option>`;
+  _dropdown(id, label, items, filtroKey, presel) {
+    const sel = this.filtros[filtroKey] || [];
+    const opts = items.map(v => {
+      const checked = sel.includes(v) ? 'checked' : '';
+      return `<label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;font-size:12px;color:var(--text);white-space:nowrap"
+        onmouseenter="this.style.background='var(--bg-3)'" onmouseleave="this.style.background=''">
+        <input type="checkbox" value="${v}" ${checked}
+          onchange="Dashboard.toggleOpcao('${filtroKey}','${v}',this.checked,'${id}')"
+          style="accent-color:var(--accent);width:14px;height:14px">
+        ${v}
+      </label>`;
     }).join('');
-    return `<div style="display:flex;flex-direction:column;gap:3px;">
+
+    const btnLabel = sel.length === 0 ? 'Todos' : sel.length === 1 ? sel[0] : sel.length + ' selecionados';
+    const ativo = sel.length > 0 ? 'border-color:var(--accent);color:var(--accent)' : '';
+
+    return `<div style="display:flex;flex-direction:column;gap:3px;position:relative" id="wrap-${id}">
       <span style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em">${label}</span>
-      <select id="${id}" class="input select" style="padding:6px 28px 6px 10px;font-size:12px;min-width:110px">
-        <option value="">Todos</option>${opts}
-      </select>
+      <button onclick="Dashboard.toggleDrop('wrap-${id}')"
+        style="display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 10px;
+        background:var(--bg-3);border:1px solid var(--border-2);border-radius:var(--r2);
+        font-size:12px;color:var(--text);cursor:pointer;min-width:120px;${ativo}" id="btn-${id}">
+        <span id="lbl-${id}">${btnLabel}</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </button>
+      <div class="dash-dropdown" style="display:none;position:absolute;top:100%;left:0;margin-top:4px;
+        background:var(--bg-2);border:1px solid var(--border);border-radius:var(--r2);
+        min-width:180px;max-height:220px;overflow-y:auto;z-index:100;box-shadow:var(--shadow)">
+        <label style="display:flex;align-items:center;gap:8px;padding:6px 10px;cursor:pointer;font-size:12px;
+          color:var(--accent);border-bottom:1px solid var(--border);font-weight:600"
+          onmouseenter="this.style.background='var(--bg-3)'" onmouseleave="this.style.background=''">
+          <input type="checkbox" onchange="Dashboard.toggleTodos('${filtroKey}','${id}',this.checked)"
+            ${sel.length === 0 ? 'checked' : ''}
+            style="accent-color:var(--accent);width:14px;height:14px">
+          Todos
+        </label>
+        ${opts}
+      </div>
     </div>`;
   },
 
-  limparFiltros() {
-    this.filtros = { mes: '', evento: '', canal: '', semana: '', categoria: '' };
-    ['mes','sem','evento','canal','cat'].forEach(id => {
-      const el = document.getElementById('dash-f-' + id);
-      if (el) el.value = '';
+  toggleDrop(wrapId) {
+    const wrap = document.getElementById(wrapId);
+    if (!wrap) return;
+    const drop = wrap.querySelector('.dash-dropdown');
+    const jaAberto = drop.style.display !== 'none';
+    // Fecha todos
+    document.querySelectorAll('.dash-dropdown').forEach(d => d.style.display = 'none');
+    this._dropAberto = null;
+    if (!jaAberto) {
+      drop.style.display = 'block';
+      this._dropAberto = wrap;
+    }
+  },
+
+  toggleOpcao(filtroKey, valor, checked, id) {
+    if (!this.filtros[filtroKey]) this.filtros[filtroKey] = [];
+    if (checked) {
+      if (!this.filtros[filtroKey].includes(valor)) this.filtros[filtroKey].push(valor);
+    } else {
+      this.filtros[filtroKey] = this.filtros[filtroKey].filter(v => v !== valor);
+    }
+    this._atualizarBotao(filtroKey, id);
+    this.atualizar();
+  },
+
+  toggleTodos(filtroKey, id, checked) {
+    const wrap = document.getElementById('wrap-' + id);
+    if (!wrap) return;
+    const cbs = wrap.querySelectorAll('.dash-dropdown input[type=checkbox]:not(:first-child)');
+    this.filtros[filtroKey] = [];
+    cbs.forEach(cb => {
+      cb.checked = false;
     });
+    this._atualizarBotao(filtroKey, id);
+    this.atualizar();
+  },
+
+  _atualizarBotao(filtroKey, id) {
+    const sel = this.filtros[filtroKey] || [];
+    const lbl = document.getElementById('lbl-' + id);
+    const btn = document.getElementById('btn-' + id);
+    const todosCheck = document.querySelector(`#wrap-${id} .dash-dropdown label:first-child input`);
+    if (lbl) lbl.textContent = sel.length === 0 ? 'Todos' : sel.length === 1 ? sel[0] : sel.length + ' selecionados';
+    if (btn) btn.style.borderColor = sel.length > 0 ? 'var(--accent)' : 'var(--border-2)';
+    if (btn) btn.style.color = sel.length > 0 ? 'var(--accent)' : 'var(--text)';
+    if (todosCheck) todosCheck.checked = sel.length === 0;
+  },
+
+  limparFiltros() {
+    this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [] };
+    this.renderFiltros();
     this.atualizar();
   },
 
   async atualizar() {
     const el = document.getElementById('dash-content');
     el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
-
     try {
       const d = await API.post('dashboard', { filtros: this.filtros });
       this.dados = d;
       this.renderMetricas(d);
-      this.renderGraficos(d);
     } catch(e) {
       el.innerHTML = `<div class="empty"><div class="empty-title">Erro</div><div class="empty-sub">${e.message}</div></div>`;
     }
@@ -100,20 +164,16 @@ const Dashboard = {
   renderMetricas(d) {
     const el = document.getElementById('dash-content');
     el.innerHTML = `
-      <!-- Métricas -->
       <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3);margin-bottom:var(--s4)">
         ${this._metrica('Total HCs', d.totalHC, 'headcounts', '')}
         ${this._metrica('Faturamento', 'R$ ' + Number(d.totalValor||0).toLocaleString('pt-BR',{minimumFractionDigits:2}), 'valor total', '')}
         ${this._metrica('Vendedores', d.vendedoresAtivos, 'com vendas', '')}
         ${this._metrica('HCs Hoje', d.hojeHC, d.hojeStr || '', 'accent')}
       </div>
-
-      <!-- Gráficos -->
       <div class="card" style="margin-bottom:var(--s3)">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">HCs por Mês</div>
         <div style="position:relative;height:180px"><canvas id="chart-mes"></canvas></div>
       </div>
-
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-bottom:var(--s3)">
         <div class="card">
           <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Por Canal</div>
@@ -124,18 +184,15 @@ const Dashboard = {
           <div id="chart-cat"></div>
         </div>
       </div>
-
       <div class="card" style="margin-bottom:var(--s3)">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Por Evento</div>
         <div id="chart-evento"></div>
       </div>
-
       <div class="card" style="margin-bottom:var(--s3)">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Ranking Vendedores</div>
         <div id="chart-ranking"></div>
       </div>`;
 
-    // Renderiza gráficos após HTML estar no DOM
     setTimeout(() => this._renderCharts(d), 50);
   },
 
@@ -149,14 +206,12 @@ const Dashboard = {
   },
 
   _renderCharts(d) {
-    // Destroi charts anteriores
     Object.values(this.charts).forEach(c => { try { c.destroy(); } catch(e) {} });
     this.charts = {};
 
     const ACCENT = '#e8b86d';
     const CORES = ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8','#e8b05d','#5de8d4','#e85db0'];
 
-    // Chart HCs por mês
     const canvasMes = document.getElementById('chart-mes');
     if (canvasMes && d.porMes && d.porMes.length) {
       this.charts.mes = new Chart(canvasMes, {
@@ -176,16 +231,9 @@ const Dashboard = {
       });
     }
 
-    // Canal — barras horizontais
     this._renderBarras('chart-canal', d.porCanal || [], CORES);
-
-    // Categoria
-    this._renderBarras('chart-cat', d.porCategoria || [], ['#5cb876','#e8b86d','#5d9ee8']);
-
-    // Evento
+    this._renderBarras('chart-cat', d.porCategoria || [], ['#5cb876','#e8b86d','#5d9ee8','#e85d5d']);
     this._renderBarras('chart-evento', d.porEvento || [], CORES);
-
-    // Ranking vendedores
     this._renderRanking('chart-ranking', d.ranking || []);
   },
 
@@ -224,9 +272,5 @@ const Dashboard = {
         </div>
       </div>`;
     }).join('') || '<div class="empty-sub">Sem dados</div>';
-  },
-
-  renderGraficos(d) {
-    // já feito em renderMetricas
   }
 };
