@@ -7,7 +7,7 @@ const Upload = {
     el.innerHTML = `
       <div class="card" style="margin-bottom:var(--s3)">
         <h3 style="margin-bottom:var(--s2)">Importar CSV da Central</h3>
-        <p style="margin-bottom:var(--s5)">Selecione o arquivo CSV exportado da Central de Vendas</p>
+        <p style="margin-bottom:var(--s5)">Selecione um ou mais arquivos CSV exportados da Central de Vendas</p>
 
         <div id="upload-dropzone" style="
           border:2px dashed var(--border-2);border-radius:var(--r3);
@@ -18,9 +18,10 @@ const Upload = {
           ondrop="Upload.onDrop(event)">
           <div style="font-size:32px;margin-bottom:var(--s3)">📂</div>
           <div style="font-size:14px;font-weight:600;color:var(--text);margin-bottom:var(--s2)">Toque para selecionar</div>
-          <div style="font-size:12px;color:var(--text-3)">ou arraste o arquivo CSV aqui</div>
+          <div style="font-size:12px;color:var(--text-3)">ou arraste os arquivos CSV aqui</div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:var(--s2)">Múltiplos arquivos permitidos</div>
         </div>
-        <input type="file" id="upload-file" accept=".csv" style="display:none" onchange="Upload.onFile(this)">
+        <input type="file" id="upload-file" accept=".csv" multiple style="display:none" onchange="Upload.onFile(this)">
       </div>
 
       <div id="upload-preview" style="display:none">
@@ -29,7 +30,7 @@ const Upload = {
             <h3 id="upload-count"></h3>
             <button class="btn btn-sm btn-secondary" onclick="Upload.limpar()">Limpar</button>
           </div>
-          <div id="upload-erros" style="margin-bottom:var(--s4)"></div>
+          <div id="upload-arquivos" style="margin-bottom:var(--s4)"></div>
           <button class="btn btn-primary btn-full" id="btn-importar" onclick="Upload.importar()">
             Importar Vendas
           </button>
@@ -46,42 +47,44 @@ const Upload = {
   onDrop(e) {
     e.preventDefault();
     document.getElementById('upload-dropzone').style.borderColor = 'var(--border-2)';
-    const file = e.dataTransfer.files[0];
-    if (file) this.processarArquivo(file);
+    const files = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.csv'));
+    if (files.length) this.processarArquivos(files);
   },
 
   onFile(input) {
-    const file = input.files[0];
-    if (file) this.processarArquivo(file);
+    const files = Array.from(input.files);
+    if (files.length) this.processarArquivos(files);
   },
 
-  processarArquivo(file) {
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const texto = e.target.result;
-      this.parsearCSV(texto);
-    };
-    reader.readAsText(file, 'utf-8');
+  processarArquivos(files) {
+    this.linhas = [];
+    this._arquivos = [];
+    let processados = 0;
+
+    files.forEach(file => {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const linhas = this.parsearCSV(e.target.result);
+        this._arquivos.push({ nome: file.name, count: linhas.length });
+        this.linhas = this.linhas.concat(linhas);
+        processados++;
+        if (processados === files.length) this.renderPreview();
+      };
+      reader.readAsText(file, 'utf-8');
+    });
   },
 
   parsearCSV(texto) {
     const linhas = texto.split('\n').filter(l => l.trim());
-    if (linhas.length < 2) {
-      Utils.toast('CSV inválido', 'error');
-      return;
-    }
-
-    // Detecta separador
+    if (linhas.length < 2) return [];
     const sep = linhas[0].includes(';') ? ';' : ',';
     const cabecalho = this._parseRow(linhas[0], sep);
-    this.linhas = linhas.slice(1).map(l => {
+    return linhas.slice(1).map(l => {
       const cols = this._parseRow(l, sep);
       const obj = {};
       cabecalho.forEach((h, i) => obj[h.trim()] = (cols[i] || '').trim());
       return obj;
     }).filter(l => l['Id da Central']);
-
-    this.renderPreview();
   },
 
   _parseRow(row, sep) {
@@ -103,7 +106,16 @@ const Upload = {
     document.getElementById('upload-preview').style.display = 'block';
     document.getElementById('upload-count').textContent = `${n} venda${n !== 1 ? 's' : ''} encontrada${n !== 1 ? 's' : ''}`;
 
-    // Mostra preview das primeiras 5
+    // Lista de arquivos
+    const arquivosHtml = (this._arquivos || []).map(a =>
+      `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
+        <span style="color:var(--text)">📄 ${a.nome}</span>
+        <span style="color:var(--text-3)">${a.count} vendas</span>
+      </div>`
+    ).join('');
+    document.getElementById('upload-arquivos').innerHTML = arquivosHtml;
+
+    // Preview das primeiras 5
     const preview = this.linhas.slice(0, 5).map(l =>
       `<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
         <span>${l['Nome'] || '—'}</span>
@@ -132,6 +144,7 @@ const Upload = {
 
   limpar() {
     this.linhas = [];
+    this._arquivos = [];
     document.getElementById('upload-preview').style.display = 'none';
     document.getElementById('upload-file').value = '';
   }
