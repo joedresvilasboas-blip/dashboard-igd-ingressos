@@ -157,6 +157,8 @@ const Utils = {
     }
     return h;
   },
+
+  renderStars(pontos, cor) {
     const corMap = { JUNIOR: '#EF9F27', PLENO: '#BA7517', SENIOR: '#3B6D11' };
     const c = corMap[cor] || cor || '#EF9F27';
     const val = Math.min(pontos, 5);
