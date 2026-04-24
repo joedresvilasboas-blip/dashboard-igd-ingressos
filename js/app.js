@@ -139,7 +139,24 @@ const Utils = {
     return s + '/>';
   },
 
-  renderStars(pontos, cor) {
+  // Estrelas com inteiras + terços
+  renderStarsDetailed(inteiras, tercos, nivel) {
+    const corMap = { JUNIOR: '#EF9F27', PLENO: '#BA7517', SENIOR: '#639922' };
+    const c = corMap[nivel] || '#EF9F27';
+    let h = '';
+    for (let i = 0; i < 5; i++) {
+      if (i < inteiras) {
+        h += `<svg width="18" height="18" viewBox="0 0 24 24">${this.svgStar(c, c, 1, null)}</svg>`;
+      } else if (i === inteiras && tercos > 0) {
+        const pct = tercos === 1 ? '33%' : '66%';
+        const id = 'st' + Math.random().toString(36).slice(2,7);
+        h += `<svg width="18" height="18" viewBox="0 0 24 24"><defs><clipPath id="${id}"><rect x="0" y="0" width="${pct}" height="24"/></clipPath></defs>${this.svgStar('none','#2a2a2a',1.5,null)}${this.svgStar(c,c,1,id)}</svg>`;
+      } else {
+        h += `<svg width="18" height="18" viewBox="0 0 24 24">${this.svgStar('none','#2a2a2a',1.5,null)}</svg>`;
+      }
+    }
+    return h;
+  },
     const corMap = { JUNIOR: '#EF9F27', PLENO: '#BA7517', SENIOR: '#3B6D11' };
     const c = corMap[cor] || cor || '#EF9F27';
     const val = Math.min(pontos, 5);
