@@ -121,9 +121,8 @@ const Upload = {
     try {
       const res = await API.uploadCSV(this.linhas);
       Utils.toast(`${res.importados || 0} vendas importadas!`, 'success');
-      if (res.duplicados > 0) {
-        Utils.toast(`${res.duplicados} duplicadas ignoradas`, '');
-      }
+      if (res.atualizados > 0) Utils.toast(`${res.atualizados} cancelamentos atualizados`, 'success');
+      if (res.duplicados > 0) Utils.toast(`${res.duplicados} duplicadas ignoradas`, '');
       this.limpar();
     } catch (e) {
       Utils.toast('Erro ao importar: ' + e.message, 'error');
