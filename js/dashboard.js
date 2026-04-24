@@ -25,6 +25,8 @@ const Dashboard = {
     el.style.display = el.style.display === 'none' ? 'block' : 'none';
     if (el.style.display === 'block' && !el.innerHTML) this.renderFiltros();
   },
+
+  renderFiltros() {
     const c = this.config;
     const topbar = document.getElementById('dash-periodo');
     if (topbar) topbar.textContent = 'Todos os períodos';
