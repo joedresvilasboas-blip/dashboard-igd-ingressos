@@ -41,11 +41,11 @@ const Dashboard = {
 
     filtrosEl.innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;padding:10px 20px;background:var(--bg-2);border-bottom:1px solid var(--border);">
-        ${this._select('dash-f-mes',     'Mês',       meses,   '', m => m)}
-        ${this._select('dash-f-sem',     'Semana',    semanas, '', s => s.val, s => s.label)}
-        ${this._select('dash-f-evento',  'Evento',    eventos, '', e => e)}
-        ${this._select('dash-f-canal',   'Canal',     canais,  '', c => c)}
-        ${this._select('dash-f-cat',     'Categoria', cats,    '', c => c)}
+        ${this._select('dash-f-mes',     'Mês',       meses,   '')}
+        ${this._select('dash-f-sem',     'Semana',    semanas, '', true)}
+        ${this._select('dash-f-evento',  'Evento',    eventos, '')}
+        ${this._select('dash-f-canal',   'Canal',     canais,  '')}
+        ${this._select('dash-f-cat',     'Categoria', cats,    '')}
         <button class="btn btn-sm btn-secondary" onclick="Dashboard.limparFiltros()" style="align-self:flex-end">Limpar</button>
       </div>`;
 
@@ -58,10 +58,10 @@ const Dashboard = {
     });
   },
 
-  _select(id, label, items, val, valFn, labelFn) {
+  _select(id, label, items, val, isSemana) {
     const opts = items.map(i => {
-      const v = valFn ? valFn(i) : i;
-      const l = labelFn ? labelFn(i) : i;
+      const v = isSemana ? i.val : i;
+      const l = isSemana ? i.label : i;
       return `<option value="${v}">${l}</option>`;
     }).join('');
     return `<div style="display:flex;flex-direction:column;gap:3px;">
