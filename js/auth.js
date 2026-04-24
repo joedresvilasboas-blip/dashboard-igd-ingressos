@@ -6,8 +6,8 @@
 const AUTH = {
   // Hashes das senhas — altere aqui para mudar as senhas
   HASHES: {
-    admin:    'b7e8c2f1a9d4e6b3c0f2a8d5e7b4c1f3a6e9b2d5f8c3a7e0b4d7f2c5a8e1b6d9', // igd@admin2026
-    vendedor: 'a3f6c9e2b5d8f1a4c7e0b3d6f9a2c5e8b1d4f7a0c3e6b9d2f5a8c1e4b7d0f3a6'  // igd@vendas2026
+    admin:    'cc55999d698829b0c690b0aacdaf8e6d5585457504aa8a3b0214259f31274112', // igd@admin2026
+    vendedor: 'd998dd8b4b9668f856fcf3823a0f0a4015d5ad26e3edf4c5464339ceee418e80'  // igd@vendas2026
   },
 
   SESSION_KEY: 'igd_session',
