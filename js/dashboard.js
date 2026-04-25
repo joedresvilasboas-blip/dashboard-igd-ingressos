@@ -71,10 +71,10 @@ const Dashboard = {
     const c = this.config;
     const meses   = (c.meses   || []).map(m => m.nome);
     const semanas = (c.semanas || []).map(s => `Sem ${s.num} · ${s.label}`);
-    const eventos = (c.eventos || []).map(e => e.nome);
-    const canais  = ['VA SALES','RC SALES','TRÁFEGO','ORGÂNICO','MARKETING','CONTEÚDO','SUPORTE','GRATUITO'];
-    const cats    = ['NORMAL','VIP','UPGRADE','ESSENTIAL'];
-    const status  = ['PAGO','GRATUITO','CANCELADO'];
+    const eventos = c.eventosFiltro || (c.eventos || []).map(e => e.nome);
+    const canais  = c.canais     || [];
+    const cats    = c.categorias || [];
+    const status  = c.status     || [];
 
     const filtrosEl = document.getElementById('dash-filtros');
     if (!filtrosEl) return;
