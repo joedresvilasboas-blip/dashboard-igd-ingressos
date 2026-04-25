@@ -143,7 +143,7 @@ const Dashboard = {
     if (checked) { if (!this.filtros[filtroKey].includes(valor)) this.filtros[filtroKey].push(valor); }
     else { this.filtros[filtroKey] = this.filtros[filtroKey].filter(v => v !== valor); }
     this._atualizarBotao(filtroKey, id);
-    if (this.visao === 'eventos') this.renderEventos();
+    if (this.visao === 'eventos') this._renderListaEventos();
     else this.atualizar();
   },
 
@@ -153,7 +153,7 @@ const Dashboard = {
     wrap.querySelectorAll('.dash-dropdown input[type=checkbox]:not(:first-child)').forEach(cb => cb.checked = false);
     this.filtros[filtroKey] = [];
     this._atualizarBotao(filtroKey, id);
-    if (this.visao === 'eventos') this.renderEventos();
+    if (this.visao === 'eventos') this._renderListaEventos();
     else this.atualizar();
   },
 
@@ -170,7 +170,7 @@ const Dashboard = {
   limparFiltros() {
     this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [] };
     this.renderFiltros();
-    if (this.visao === 'eventos') this.renderEventos();
+    if (this.visao === 'eventos') this._renderListaEventos();
     else this.atualizar();
   },
 
@@ -378,20 +378,22 @@ const Dashboard = {
   },
 
   _filtroEventos: 'proximos',
-  _buscaEvento: '',
 
   _renderListaEventos() {
     const el = document.getElementById('dash-content');
     const f = this._filtroEventos;
-    const busca = (this._buscaEvento || '').toLowerCase();
 
-    // Todos já vêm ordenados por data do backend
+    // Usa filtro nativo de evento do topo
+    const eventosFiltrados = this.filtros.evento || [];
+
     let lista = this.eventosData || [];
-    if (f === 'proximos')   lista = lista.filter(e => e.futuro);
+    if (f === 'proximos')    lista = lista.filter(e => e.futuro);
     else if (f === 'realizados') lista = lista.filter(e => !e.futuro);
-    // f === 'todos' → mostra todos sem filtrar
+    // f === 'todos' → sem filtro de futuro/passado
 
-    if (busca) lista = lista.filter(e => e.nome.toLowerCase().includes(busca));
+    if (eventosFiltrados.length > 0) {
+      lista = lista.filter(e => eventosFiltrados.includes(e.nome));
+    }
 
     const btnStyle = (v) => `font-size:12px;padding:5px 14px;border-radius:20px;cursor:pointer;
       border:1px solid ${this._filtroEventos===v?'var(--accent)':'var(--border-2)'};
@@ -399,14 +401,10 @@ const Dashboard = {
       color:${this._filtroEventos===v?'var(--accent)':'var(--text-3)'}`;
 
     el.innerHTML = `
-      <div style="display:flex;gap:8px;align-items:center;margin-bottom:var(--s3);flex-wrap:wrap">
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:var(--s3)">
         <button style="${btnStyle('proximos')}"   onclick="Dashboard._filtroEventos='proximos';Dashboard._renderListaEventos()">Próximos</button>
         <button style="${btnStyle('realizados')}" onclick="Dashboard._filtroEventos='realizados';Dashboard._renderListaEventos()">Realizados</button>
         <button style="${btnStyle('todos')}"      onclick="Dashboard._filtroEventos='todos';Dashboard._renderListaEventos()">Todos</button>
-        <input type="text" placeholder="Buscar evento..." value="${this._buscaEvento}"
-          oninput="Dashboard._buscaEvento=this.value;Dashboard._renderListaEventos()"
-          style="flex:1;min-width:140px;padding:5px 10px;background:var(--bg-3);border:1px solid var(--border-2);
-          border-radius:20px;color:var(--text);font-size:12px;outline:none">
       </div>
       <div style="font-size:11px;color:var(--text-3);margin-bottom:var(--s3)">${lista.length} evento${lista.length!==1?'s':''}</div>
       ${lista.map(ev => this._cardEvento(ev)).join('') || '<div class="empty"><div class="empty-title">Nenhum evento encontrado</div></div>'}`;
