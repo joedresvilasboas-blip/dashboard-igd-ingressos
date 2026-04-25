@@ -143,8 +143,10 @@ const Dashboard = {
     if (checked) { if (!this.filtros[filtroKey].includes(valor)) this.filtros[filtroKey].push(valor); }
     else { this.filtros[filtroKey] = this.filtros[filtroKey].filter(v => v !== valor); }
     this._atualizarBotao(filtroKey, id);
-    if (this.visao === 'eventos') this._renderListaEventos();
-    else this.atualizar();
+    if (this.visao === 'eventos') {
+      if (filtroKey === 'evento') this._renderListaEventos();
+      else this.renderEventos();
+    } else this.atualizar();
   },
 
   toggleTodos(filtroKey, id, checked) {
@@ -153,8 +155,10 @@ const Dashboard = {
     wrap.querySelectorAll('.dash-dropdown input[type=checkbox]:not(:first-child)').forEach(cb => cb.checked = false);
     this.filtros[filtroKey] = [];
     this._atualizarBotao(filtroKey, id);
-    if (this.visao === 'eventos') this._renderListaEventos();
-    else this.atualizar();
+    if (this.visao === 'eventos') {
+      if (filtroKey === 'evento') this._renderListaEventos();
+      else this.renderEventos();
+    } else this.atualizar();
   },
 
   _atualizarBotao(filtroKey, id) {
@@ -170,7 +174,7 @@ const Dashboard = {
   limparFiltros() {
     this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [] };
     this.renderFiltros();
-    if (this.visao === 'eventos') this._renderListaEventos();
+    if (this.visao === 'eventos') this.renderEventos();
     else this.atualizar();
   },
 
@@ -368,9 +372,8 @@ const Dashboard = {
     const el = document.getElementById('dash-content');
     el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
     try {
-      const d = await API.get('eventos');
+      const d = await API.post('eventos', { filtros: this.filtros });
       this.eventosData = d.eventos || [];
-      this._buscaEvento = '';
       this._renderListaEventos();
     } catch(e) {
       el.innerHTML = `<div class="empty"><div class="empty-title">Erro</div><div class="empty-sub">${e.message}</div></div>`;
