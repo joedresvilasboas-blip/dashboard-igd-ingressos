@@ -47,6 +47,12 @@ const API = {
   salvarCalendario(dados) { return this.post('salvar_calendario', dados); },
   salvarCanal(dados) { return this.post('salvar_canal', dados); },
   salvarOC(dados) { return this.post('salvar_oc', dados); },
+  deletarOC(oc, plano) { return this.post('deletar_oc', { oc, plano }); },
+  getOCsEvento(eventoCod) { return this.post('get_ocs_evento', { eventoCod }); },
+  salvarOCEvento(dados) { return this.post('salvar_oc_evento', dados); },
+  salvarPlanoEvento(dados) { return this.post('salvar_plano_evento', dados); },
+  deletarOCEvento(oc, eventoCod) { return this.post('deletar_oc_evento', { oc, eventoCod }); },
+  deletarPlanoEvento(plano, eventoCod) { return this.post('deletar_plano_evento', { plano, eventoCod }); },
   deletar(tipo, id) { return this.post('deletar', { tipo, id }); },
 
   // Upload CSV
