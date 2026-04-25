@@ -106,7 +106,6 @@ const Upload = {
     document.getElementById('upload-preview').style.display = 'block';
     document.getElementById('upload-count').textContent = `${n} venda${n !== 1 ? 's' : ''} encontrada${n !== 1 ? 's' : ''}`;
 
-    // Lista de arquivos
     const arquivosHtml = (this._arquivos || []).map(a =>
       `<div style="display:flex;align-items:center;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:12px">
         <span style="color:var(--text)">📄 ${a.nome}</span>
@@ -115,7 +114,6 @@ const Upload = {
     ).join('');
     document.getElementById('upload-arquivos').innerHTML = arquivosHtml;
 
-    // Preview das primeiras 5
     const preview = this.linhas.slice(0, 5).map(l =>
       `<div style="padding:6px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between">
         <span>${l['Nome'] || '—'}</span>
@@ -131,12 +129,31 @@ const Upload = {
     Utils.btnLoading(btn, true);
 
     try {
+      // ===== DEBUG =====
+      console.log('[Upload] Total de linhas:', this.linhas.length);
+      console.log('[Upload] Primeira linha:', JSON.stringify(this.linhas[0]));
+      const payload = JSON.stringify({ action: 'upload_csv', linhas: this.linhas });
+      console.log('[Upload] Tamanho do payload (bytes):', payload.length);
+      console.log('[Upload] Início do payload:', payload.slice(0, 300));
+      // ===== FIM DEBUG =====
+
       const res = await API.uploadCSV(this.linhas);
+
+      // ===== DEBUG =====
+      console.log('[Upload] Resposta da API:', JSON.stringify(res));
+      // ===== FIM DEBUG =====
+
+      if (res.erro) {
+        Utils.toast('Erro do servidor: ' + res.erro, 'error');
+        Utils.btnLoading(btn, false);
+        return;
+      }
       if (res.importados > 0) Utils.toast(`${res.importados} vendas importadas!`, 'success');
       if (res.atualizados > 0) Utils.toast(`${res.atualizados} vendas atualizadas!`, 'success');
       if (res.erros > 0) Utils.toast(`${res.erros} erros`, 'error');
       this.limpar();
     } catch (e) {
+      console.error('[Upload] Exceção:', e);
       Utils.toast('Erro ao importar: ' + e.message, 'error');
       Utils.btnLoading(btn, false);
     }
