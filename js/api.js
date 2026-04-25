@@ -52,4 +52,7 @@ const API = {
   // Upload CSV
   uploadCSV(linhas) { return this.post('upload_csv', { linhas }); },
   getUploadStatus() { return this.get('upload_status'); },
+
+  // Jornada do Upgrade
+  getJornadaUpgrade(evento, filtros) { return this.post('jornada_upgrade', { evento, filtros }); },
 };

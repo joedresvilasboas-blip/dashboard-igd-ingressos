@@ -223,8 +223,15 @@ const Dashboard = {
       <div class="card" style="margin-bottom:var(--s3)">
         <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Ranking Vendedores</div>
         <div id="chart-ranking"></div>
+      </div>
+      <div class="card" style="margin-bottom:var(--s3)">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s4)">
+          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em">🔍 Origem dos Upgrades</div>
+          <span style="font-size:11px;color:var(--text-3)">Reage aos filtros</span>
+        </div>
+        <div id="jornada-geral-content"></div>
       </div>`;
-    setTimeout(() => this._renderChartsGeral(d), 50);
+    setTimeout(() => { this._renderChartsGeral(d); this._carregarJornadaGeral(); }, 50);
   },
 
   // ===== VISÃO DIÁRIA =====
@@ -475,6 +482,22 @@ const Dashboard = {
         <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Por Canal</div>
         ${canaisHtml}
       </div>` : ''}
+
+      <!-- Jornada do Upgrade (accordion) -->
+      ${ev.vendUpgrade > 0 ? `
+      <div style="border-top:1px solid var(--border);margin-top:var(--s3)">
+        <button onclick="Dashboard.toggleJornada(this, '${ev.nome.replace(/'/g, "\\'")}', event)"
+          style="width:100%;display:flex;align-items:center;justify-content:space-between;
+          padding:var(--s3) 0;background:none;border:none;cursor:pointer">
+          <span style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)">
+            🔍 Origem dos Upgrades
+          </span>
+          <span style="font-size:11px;color:var(--accent)">${ev.vendUpgrade} upgrades ▾</span>
+        </button>
+        <div class="jornada-body" style="display:none;padding-bottom:var(--s3)">
+          <div class="jornada-loading" style="font-size:11px;color:var(--text-3)">Carregando...</div>
+        </div>
+      </div>` : ''}
     </div>`;
   },
 
@@ -541,5 +564,84 @@ const Dashboard = {
           <div style="font-size:11px;color:var(--text-3)">${v.hc} HC</div>
         </div>
       </div>`).join('') || '<div class="empty-sub">Sem dados</div>';
+  },
+
+  // ===== JORNADA DO UPGRADE =====
+  async toggleJornada(btn, eventoNome, event) {
+    event.stopPropagation();
+    const body = btn.nextElementSibling;
+    const aberto = body.style.display !== 'none';
+
+    if (aberto) {
+      body.style.display = 'none';
+      btn.querySelector('span:last-child').textContent = btn.querySelector('span:last-child').textContent.replace('▴','▾');
+      return;
+    }
+
+    body.style.display = 'block';
+    btn.querySelector('span:last-child').textContent = btn.querySelector('span:last-child').textContent.replace('▾','▴');
+
+    // Já carregado
+    if (!body.querySelector('.jornada-loading')) return;
+
+    try {
+      const d = await API.getJornadaUpgrade(eventoNome, this.filtros);
+      this._renderJornadaBody(body, d);
+    } catch(e) {
+      body.innerHTML = `<div style="font-size:11px;color:var(--red)">Erro: ${e.message}</div>`;
+    }
+  },
+
+  _renderJornadaBody(el, d) {
+    if (!d.total) { el.innerHTML = '<div style="font-size:11px;color:var(--text-3)">Sem upgrades no período.</div>'; return; }
+
+    const CORES = ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8','#e8b05d'];
+    const maxCount = d.canais.reduce((m, c) => Math.max(m, c.count), 1);
+
+    const canaisHtml = d.canais.map((c, i) => {
+      const pct = Math.round(c.count / d.identificados * 100);
+      const barW = Math.round(c.count / maxCount * 100);
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${CORES[i%CORES.length]};flex-shrink:0"></div>
+        <div style="font-size:11px;color:var(--text-2);min-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.canal}</div>
+        <div style="flex:1;height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden">
+          <div style="width:${barW}%;height:100%;background:${CORES[i%CORES.length]};border-radius:3px"></div>
+        </div>
+        <div style="font-size:11px;font-weight:600;color:var(--text);min-width:20px;text-align:right">${c.count}</div>
+        <div style="font-size:10px;color:var(--text-3);min-width:28px;text-align:right">${pct}%</div>
+      </div>`;
+    }).join('');
+
+    el.innerHTML = `
+      <div style="display:flex;gap:var(--s4);margin-bottom:var(--s3);flex-wrap:wrap">
+        <div>
+          <div style="font-size:10px;color:var(--text-3)">Total upgrades</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text)">${d.total}</div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-3)">Origem identificada</div>
+          <div style="font-size:18px;font-weight:700;color:var(--green)">${d.identificados} <span style="font-size:12px;font-weight:400">(${d.pct}%)</span></div>
+        </div>
+        <div>
+          <div style="font-size:10px;color:var(--text-3)">Sem identificação</div>
+          <div style="font-size:18px;font-weight:700;color:var(--text-3)">${d.semIdentificacao}</div>
+        </div>
+      </div>
+      ${d.canais.length ? `
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Canal de origem da compra Normal</div>
+        ${canaisHtml}
+      ` : '<div style="font-size:11px;color:var(--text-3)">Nenhuma origem identificada.</div>'}`;
+  },
+
+  async _carregarJornadaGeral() {
+    const el = document.getElementById('jornada-geral-content');
+    if (!el) return;
+    el.innerHTML = '<div style="display:flex;justify-content:center;padding:var(--s4)"><div class="spinner"></div></div>';
+    try {
+      const d = await API.getJornadaUpgrade(null, this.filtros);
+      this._renderJornadaBody(el, d);
+    } catch(e) {
+      el.innerHTML = `<div style="font-size:11px;color:var(--red)">Erro: ${e.message}</div>`;
+    }
   }
 };
