@@ -326,6 +326,10 @@ const Dashboard = {
         ${this._miniBarras(doDia.canal || [])}
       </div>
       <div style="margin-bottom:var(--s4)">
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Por Categoria</div>
+        ${this._miniBarras(doDia.categoria || [], ['#5cb876','#e8b86d','#5d9ee8','#e85d5d'])}
+      </div>
+      <div style="margin-bottom:var(--s4)">
         <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Por Evento</div>
         ${this._miniBarras(doDia.evento || [])}
       </div>
@@ -335,15 +339,15 @@ const Dashboard = {
       </div>`;
   },
 
-  _miniBarras(dados) {
+  _miniBarras(dados, cores) {
     if (!dados.length) return '<div class="empty-sub">Sem dados</div>';
     const max = dados.reduce((m,d) => Math.max(m, d.hc), 1);
-    const CORES = ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8'];
+    const CRS = cores || ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8'];
     return dados.slice(0,6).map((d,i) => `
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
         <div style="font-size:10px;color:var(--text-2);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nome}</div>
         <div style="flex:1;height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden">
-          <div style="width:${Math.round(d.hc/max*100)}%;height:100%;background:${CORES[i%CORES.length]};border-radius:3px"></div>
+          <div style="width:${Math.round(d.hc/max*100)}%;height:100%;background:${CRS[i%CRS.length]};border-radius:3px"></div>
         </div>
         <div style="font-size:10px;font-weight:600;color:var(--text);min-width:24px;text-align:right">${d.hc}</div>
       </div>`).join('');
