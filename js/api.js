@@ -51,6 +51,8 @@ const API = {
   getOCsEvento(eventoCod) { return this.post('get_ocs_evento', { eventoCod }); },
   salvarOCEvento(dados) { return this.post('salvar_oc_evento', dados); },
   salvarPlanoEvento(dados) { return this.post('salvar_plano_evento', dados); },
+  salvarOCsLote(eventoCod, ocs) { return this.post('salvar_ocs_lote', { eventoCod, ocs }); },
+  salvarPlanosLote(eventoCod, planos) { return this.post('salvar_planos_lote', { eventoCod, planos }); },
   deletarOCEvento(oc, eventoCod) { return this.post('deletar_oc_evento', { oc, eventoCod }); },
   deletarPlanoEvento(plano, eventoCod) { return this.post('deletar_plano_evento', { plano, eventoCod }); },
   deletar(tipo, id) { return this.post('deletar', { tipo, id }); },

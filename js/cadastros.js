@@ -406,17 +406,17 @@ const CadEventos = {
     const texto = document.getElementById('ev-novo-plano').value.trim();
     if (!texto) { Utils.toast('Digite ao menos um plano', 'error'); return; }
     if (!this.eventoAtual) { Utils.toast('Salve o evento primeiro', 'error'); return; }
-    const codigos = this._parsarCodigos(texto);
-    if (!codigos.length) return;
+    const planos = this._parsarCodigos(texto);
+    if (!planos.length) return;
     try {
-      for (const plano of codigos) {
-        await API.salvarPlanoEvento({ plano, eventoCod: this.eventoAtual.codigo });
-        if (!this.planos.find(p => p.plano === plano)) this.planos.push({ plano });
-      }
+      const res = await API.salvarPlanosLote(this.eventoAtual.codigo, planos);
+      planos.forEach(p => { if (!this.planos.find(x => x.plano === p)) this.planos.push({ plano: p }); });
       this._renderPlanos();
       document.getElementById('ev-novo-plano').value = '';
       document.getElementById('ev-add-plano').style.display = 'none';
-      Utils.toast(`${codigos.length} plano${codigos.length > 1 ? 's' : ''} adicionado${codigos.length > 1 ? 's' : ''}!`, 'success');
+      const msg = res.inseridos + ' adicionado' + (res.inseridos !== 1 ? 's' : '');
+      const ign = res.ignorados > 0 ? ` · ${res.ignorados} já existia${res.ignorados !== 1 ? 'm' : ''}` : '';
+      Utils.toast(msg + ign, 'success');
     } catch { Utils.toast('Erro ao salvar planos', 'error'); }
   },
 
@@ -424,17 +424,17 @@ const CadEventos = {
     const texto = document.getElementById('ev-nova-oc').value.trim();
     if (!texto) { Utils.toast('Digite ao menos uma OC', 'error'); return; }
     if (!this.eventoAtual) { Utils.toast('Salve o evento primeiro', 'error'); return; }
-    const codigos = this._parsarCodigos(texto);
-    if (!codigos.length) return;
+    const ocs = this._parsarCodigos(texto);
+    if (!ocs.length) return;
     try {
-      for (const oc of codigos) {
-        await API.salvarOCEvento({ oc, canal: '', eventoCod: this.eventoAtual.codigo });
-        if (!this.ocs.find(o => o.oc === oc)) this.ocs.push({ oc, canal: '' });
-      }
+      const res = await API.salvarOCsLote(this.eventoAtual.codigo, ocs);
+      ocs.forEach(oc => { if (!this.ocs.find(o => o.oc === oc)) this.ocs.push({ oc, canal: '' }); });
       this._renderOCs();
       document.getElementById('ev-nova-oc').value = '';
       document.getElementById('ev-add-oc').style.display = 'none';
-      Utils.toast(`${codigos.length} OC${codigos.length > 1 ? 's' : ''} adicionada${codigos.length > 1 ? 's' : ''}!`, 'success');
+      const msg = res.inseridos + ' adicionada' + (res.inseridos !== 1 ? 's' : '');
+      const ign = res.ignorados > 0 ? ` · ${res.ignorados} já existia${res.ignorados !== 1 ? 'm' : ''}` : '';
+      Utils.toast(msg + ign, 'success');
     } catch { Utils.toast('Erro ao salvar OCs', 'error'); }
   },
 
