@@ -4,7 +4,7 @@ const Dashboard = {
   dados: null,
   eventosData: null,
   visao: 'geral', // geral | diario | eventos
-  filtros: { mes: [], evento: [], canal: ['VA SALES','RC SALES'], semana: [], categoria: [] },
+  filtros: { mes: [], evento: [], canal: ['VA SALES','RC SALES'], semana: [], categoria: [], status: [] },
   charts: {},
   _dropAberto: null,
   _diaSel: null,
@@ -74,6 +74,7 @@ const Dashboard = {
     const eventos = (c.eventos || []).map(e => e.nome);
     const canais  = ['VA SALES','RC SALES','TRÁFEGO','ORGÂNICO','MARKETING','CONTEÚDO','SUPORTE','GRATUITO'];
     const cats    = ['NORMAL','VIP','UPGRADE','ESSENTIAL'];
+    const status  = ['PAGO','GRATUITO','CANCELADO'];
 
     const filtrosEl = document.getElementById('dash-filtros');
     if (!filtrosEl) return;
@@ -85,6 +86,7 @@ const Dashboard = {
         ${this._dropdown('dash-f-evento', 'Evento',    eventos, 'evento',    [])}
         ${this._dropdown('dash-f-canal',  'Canal',     canais,  'canal',     ['VA SALES','RC SALES'])}
         ${this._dropdown('dash-f-cat',    'Categoria', cats,    'categoria', [])}
+        ${this._dropdown('dash-f-status', 'Status',    status,  'status',    [])}
         <button class="btn btn-sm btn-secondary" onclick="Dashboard.limparFiltros()">Limpar</button>
       </div>`;
   },
@@ -172,7 +174,7 @@ const Dashboard = {
   },
 
   limparFiltros() {
-    this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [] };
+    this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [], status: [] };
     this.renderFiltros();
     if (this.visao === 'eventos') this.renderEventos();
     else this.atualizar();

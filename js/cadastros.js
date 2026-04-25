@@ -201,10 +201,13 @@ const CadEventos = {
               <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddPlano()">+ Adicionar</button>
             </div>
             <div id="ev-add-plano" style="display:none;margin-bottom:var(--s3)">
+              <textarea id="ev-novo-plano" class="input" rows="4"
+                placeholder="Um plano por linha:&#10;IMLS | FLN | ABR26 | CAT1 | 1 TKT&#10;IMLS | FLN | ABR26 | CAT2 | 2 TKT&#10;IMLS | FLN | ABR26 | VIP | 2 TKT"
+                style="resize:vertical;font-family:var(--font-mono);font-size:12px"></textarea>
+              <div style="font-size:11px;color:var(--text-3);margin:var(--s2) 0">Um plano por linha. Separe também por vírgula ou ponto-e-vírgula.</div>
               <div style="display:flex;gap:var(--s2)">
-                <input id="ev-novo-plano" class="input" placeholder="Ex: IMLS | FLN | ABR26 | CAT1 | 1 TKT" style="flex:1">
-                <button class="btn btn-primary btn-sm" onclick="CadEventos.addPlano()">OK</button>
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ev-add-plano').style.display='none'">✕</button>
+                <button class="btn btn-primary btn-sm" onclick="CadEventos.addPlanos()">Adicionar</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ev-add-plano').style.display='none'">Cancelar</button>
               </div>
             </div>
             <div id="ev-planos-lista"></div>
@@ -217,13 +220,14 @@ const CadEventos = {
               <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddOC()">+ Adicionar</button>
             </div>
             <div id="ev-add-oc" style="display:none;margin-bottom:var(--s3)">
-              <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
-                <input id="ev-nova-oc" class="input" placeholder="Código da OC" style="flex:2;min-width:160px">
-                <input id="ev-nova-oc-canal" class="input" placeholder="Canal (opcional)" style="flex:1;min-width:120px">
-                <button class="btn btn-primary btn-sm" onclick="CadEventos.addOC()">OK</button>
-                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ev-add-oc').style.display='none'">✕</button>
+              <textarea id="ev-nova-oc" class="input" rows="4"
+                placeholder="Uma OC por linha:&#10;IMLS_FLN_PP_TF&#10;IMLS_FLN_PP_VA&#10;IMLS_FLN_PP_RC"
+                style="resize:vertical;font-family:var(--font-mono);font-size:12px"></textarea>
+              <div style="font-size:11px;color:var(--text-3);margin:var(--s2) 0">Uma OC por linha. Canal inferido automaticamente pelo código.</div>
+              <div style="display:flex;gap:var(--s2)">
+                <button class="btn btn-primary btn-sm" onclick="CadEventos.addOCs()">Adicionar</button>
+                <button class="btn btn-secondary btn-sm" onclick="document.getElementById('ev-add-oc').style.display='none'">Cancelar</button>
               </div>
-              <div style="font-size:11px;color:var(--text-3);margin-top:var(--s2)">Canal será inferido automaticamente pelo código da OC se deixado em branco</div>
             </div>
             <div id="ev-ocs-lista"></div>
           </div>
@@ -394,34 +398,44 @@ const CadEventos = {
     if (el.style.display === 'block') document.getElementById('ev-nova-oc').focus();
   },
 
-  async addPlano() {
-    const plano = document.getElementById('ev-novo-plano').value.trim();
-    if (!plano) { Utils.toast('Digite o código do plano', 'error'); return; }
+  _parsarCodigos(texto) {
+    return texto.split(/[\n,;]+/).map(s => s.trim()).filter(s => s.length > 0);
+  },
+
+  async addPlanos() {
+    const texto = document.getElementById('ev-novo-plano').value.trim();
+    if (!texto) { Utils.toast('Digite ao menos um plano', 'error'); return; }
     if (!this.eventoAtual) { Utils.toast('Salve o evento primeiro', 'error'); return; }
+    const codigos = this._parsarCodigos(texto);
+    if (!codigos.length) return;
     try {
-      await API.salvarPlanoEvento({ plano, eventoCod: this.eventoAtual.codigo });
-      this.planos.push({ plano });
+      for (const plano of codigos) {
+        await API.salvarPlanoEvento({ plano, eventoCod: this.eventoAtual.codigo });
+        if (!this.planos.find(p => p.plano === plano)) this.planos.push({ plano });
+      }
       this._renderPlanos();
       document.getElementById('ev-novo-plano').value = '';
       document.getElementById('ev-add-plano').style.display = 'none';
-      Utils.toast('Plano adicionado!', 'success');
-    } catch { Utils.toast('Erro ao salvar plano', 'error'); }
+      Utils.toast(`${codigos.length} plano${codigos.length > 1 ? 's' : ''} adicionado${codigos.length > 1 ? 's' : ''}!`, 'success');
+    } catch { Utils.toast('Erro ao salvar planos', 'error'); }
   },
 
-  async addOC() {
-    const oc    = document.getElementById('ev-nova-oc').value.trim();
-    const canal = document.getElementById('ev-nova-oc-canal').value.trim();
-    if (!oc) { Utils.toast('Digite o código da OC', 'error'); return; }
+  async addOCs() {
+    const texto = document.getElementById('ev-nova-oc').value.trim();
+    if (!texto) { Utils.toast('Digite ao menos uma OC', 'error'); return; }
     if (!this.eventoAtual) { Utils.toast('Salve o evento primeiro', 'error'); return; }
+    const codigos = this._parsarCodigos(texto);
+    if (!codigos.length) return;
     try {
-      await API.salvarOCEvento({ oc, canal, eventoCod: this.eventoAtual.codigo });
-      this.ocs.push({ oc, canal });
+      for (const oc of codigos) {
+        await API.salvarOCEvento({ oc, canal: '', eventoCod: this.eventoAtual.codigo });
+        if (!this.ocs.find(o => o.oc === oc)) this.ocs.push({ oc, canal: '' });
+      }
       this._renderOCs();
       document.getElementById('ev-nova-oc').value = '';
-      document.getElementById('ev-nova-oc-canal').value = '';
       document.getElementById('ev-add-oc').style.display = 'none';
-      Utils.toast('OC adicionada!', 'success');
-    } catch { Utils.toast('Erro ao salvar OC', 'error'); }
+      Utils.toast(`${codigos.length} OC${codigos.length > 1 ? 's' : ''} adicionada${codigos.length > 1 ? 's' : ''}!`, 'success');
+    } catch { Utils.toast('Erro ao salvar OCs', 'error'); }
   },
 
   async removerPlano(plano) {
