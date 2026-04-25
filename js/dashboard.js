@@ -354,7 +354,7 @@ const Dashboard = {
     if (!dados.length) return '<div class="empty-sub">Sem dados</div>';
     const max = dados.reduce((m,d) => Math.max(m, d.hc), 1);
     const CRS = cores || ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8'];
-    return dados.slice(0,6).map((d,i) => `
+    return dados.map((d,i) => `
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:5px">
         <div style="font-size:10px;color:var(--text-2);min-width:80px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${d.nome}</div>
         <div style="flex:1;height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden">
@@ -536,7 +536,7 @@ const Dashboard = {
     const el = document.getElementById(elId);
     if (!el) return;
     const max = dados.reduce((m, d) => Math.max(m, d.hc), 1);
-    el.innerHTML = dados.slice(0, 10).map((d, i) => {
+    el.innerHTML = dados.map((d, i) => {
       const pct = Math.round((d.hc / max) * 100);
       return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
         <div style="font-size:11px;color:var(--text-2);min-width:100px;max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.nome}">${d.nome}</div>
