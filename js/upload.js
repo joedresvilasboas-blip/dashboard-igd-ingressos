@@ -129,31 +129,22 @@ const Upload = {
     Utils.btnLoading(btn, true);
 
     try {
-      // ===== DEBUG =====
-      console.log('[Upload] Total de linhas:', this.linhas.length);
-      console.log('[Upload] Primeira linha:', JSON.stringify(this.linhas[0]));
-      const payload = JSON.stringify({ action: 'upload_csv', linhas: this.linhas });
-      console.log('[Upload] Tamanho do payload (bytes):', payload.length);
-      console.log('[Upload] Início do payload:', payload.slice(0, 300));
-      // ===== FIM DEBUG =====
-
       const res = await API.uploadCSV(this.linhas);
-
-      // ===== DEBUG =====
-      console.log('[Upload] Resposta da API:', JSON.stringify(res));
-      // ===== FIM DEBUG =====
 
       if (res.erro) {
         Utils.toast('Erro do servidor: ' + res.erro, 'error');
         Utils.btnLoading(btn, false);
         return;
       }
-      if (res.importados > 0) Utils.toast(`${res.importados} vendas importadas!`, 'success');
-      if (res.atualizados > 0) Utils.toast(`${res.atualizados} vendas atualizadas!`, 'success');
+
+      const msgs = [];
+      if (res.importados > 0) msgs.push(`${res.importados} importadas`);
+      if (res.atualizados > 0) msgs.push(`${res.atualizados} atualizadas`);
+      if (msgs.length) Utils.toast(msgs.join(' · ') + '!', 'success');
       if (res.erros > 0) Utils.toast(`${res.erros} erros`, 'error');
+
       this.limpar();
     } catch (e) {
-      console.error('[Upload] Exceção:', e);
       Utils.toast('Erro ao importar: ' + e.message, 'error');
       Utils.btnLoading(btn, false);
     }
