@@ -370,6 +370,7 @@ const Dashboard = {
     try {
       const d = await API.get('eventos');
       this.eventosData = d.eventos || [];
+      this._buscaEvento = '';
       this._renderListaEventos();
     } catch(e) {
       el.innerHTML = `<div class="empty"><div class="empty-title">Erro</div><div class="empty-sub">${e.message}</div></div>`;
@@ -377,75 +378,102 @@ const Dashboard = {
   },
 
   _filtroEventos: 'proximos',
+  _buscaEvento: '',
 
   _renderListaEventos() {
     const el = document.getElementById('dash-content');
     const f = this._filtroEventos;
-    let lista = this.eventosData || [];
-    if (f === 'proximos') lista = lista.filter(e => e.futuro);
-    else if (f === 'realizados') lista = lista.filter(e => !e.futuro);
+    const busca = (this._buscaEvento || '').toLowerCase();
 
-    const btnStyle = (v) => `font-size:12px;padding:5px 14px;border-radius:20px;cursor:pointer;border:1px solid ${this._filtroEventos===v?'var(--accent)':'var(--border-2)'};background:${this._filtroEventos===v?'var(--accent-dim)':'transparent'};color:${this._filtroEventos===v?'var(--accent)':'var(--text-3)'}`;
+    // Todos já vêm ordenados por data do backend
+    let lista = this.eventosData || [];
+    if (f === 'proximos')   lista = lista.filter(e => e.futuro);
+    else if (f === 'realizados') lista = lista.filter(e => !e.futuro);
+    // f === 'todos' → mostra todos sem filtrar
+
+    if (busca) lista = lista.filter(e => e.nome.toLowerCase().includes(busca));
+
+    const btnStyle = (v) => `font-size:12px;padding:5px 14px;border-radius:20px;cursor:pointer;
+      border:1px solid ${this._filtroEventos===v?'var(--accent)':'var(--border-2)'};
+      background:${this._filtroEventos===v?'var(--accent-dim)':'transparent'};
+      color:${this._filtroEventos===v?'var(--accent)':'var(--text-3)'}`;
 
     el.innerHTML = `
-      <div style="display:flex;gap:8px;margin-bottom:var(--s4)">
-        <button style="${btnStyle('proximos')}"  onclick="Dashboard._filtroEventos='proximos';Dashboard._renderListaEventos()">Próximos</button>
+      <div style="display:flex;gap:8px;align-items:center;margin-bottom:var(--s3);flex-wrap:wrap">
+        <button style="${btnStyle('proximos')}"   onclick="Dashboard._filtroEventos='proximos';Dashboard._renderListaEventos()">Próximos</button>
         <button style="${btnStyle('realizados')}" onclick="Dashboard._filtroEventos='realizados';Dashboard._renderListaEventos()">Realizados</button>
-        <button style="${btnStyle('todos')}"     onclick="Dashboard._filtroEventos='todos';Dashboard._renderListaEventos()">Todos</button>
+        <button style="${btnStyle('todos')}"      onclick="Dashboard._filtroEventos='todos';Dashboard._renderListaEventos()">Todos</button>
+        <input type="text" placeholder="Buscar evento..." value="${this._buscaEvento}"
+          oninput="Dashboard._buscaEvento=this.value;Dashboard._renderListaEventos()"
+          style="flex:1;min-width:140px;padding:5px 10px;background:var(--bg-3);border:1px solid var(--border-2);
+          border-radius:20px;color:var(--text);font-size:12px;outline:none">
       </div>
-      ${lista.map(ev => this._cardEvento(ev)).join('') || '<div class="empty"><div class="empty-title">Nenhum evento</div></div>'}`;
+      <div style="font-size:11px;color:var(--text-3);margin-bottom:var(--s3)">${lista.length} evento${lista.length!==1?'s':''}</div>
+      ${lista.map(ev => this._cardEvento(ev)).join('') || '<div class="empty"><div class="empty-title">Nenhum evento encontrado</div></div>'}`;
   },
 
   _cardEvento(ev) {
     const cor = p => p >= 100 ? '#e85d5d' : p >= 80 ? '#e8a86d' : '#5cb876';
-    const barra = (vend, cap, p, c) => `
-      <div style="font-size:10px;color:var(--text-3);margin-bottom:2px">${vend} / ${cap || '—'} · ${p}%</div>
-      <div style="height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden">
-        <div style="width:${Math.min(p,100)}%;height:100%;background:${c};border-radius:3px"></div>
+    const barra = (label, vend, cap, p, c) => `
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:var(--s2)">
+        <div style="font-size:10px;color:var(--text-3);min-width:60px">${label}</div>
+        <div style="flex:1;height:5px;background:var(--bg-3);border-radius:3px;overflow:hidden">
+          <div style="width:${Math.min(p,100)}%;height:100%;background:${c};border-radius:3px"></div>
+        </div>
+        <div style="font-size:10px;font-weight:600;color:var(--text);min-width:40px;text-align:right">${vend} HC</div>
+        <div style="font-size:10px;color:var(--text-3);min-width:30px;text-align:right">${p}%</div>
       </div>`;
 
     const diasBadge = ev.futuro
-      ? `<span style="font-size:10px;background:var(--accent-dim);color:var(--accent);border-radius:20px;padding:2px 8px;margin-left:6px">${ev.diasRestantes ?? ''} dias</span>`
-      : `<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);border-radius:20px;padding:2px 8px;margin-left:6px">realizado</span>`;
+      ? `<span style="font-size:10px;background:var(--accent-dim);color:var(--accent);border-radius:20px;padding:2px 8px;white-space:nowrap">${ev.diasRestantes} dias</span>`
+      : `<span style="font-size:10px;background:var(--bg-3);color:var(--text-3);border-radius:20px;padding:2px 8px">realizado</span>`;
+
+    const CORES_CANAL = ['#e8b86d','#5cb876','#5d9ee8','#e85d5d','#b86de8','#e8b05d'];
+    const canaisHtml = (ev.canaisArr || []).slice(0, 6).map((c, i) => {
+      const pct = ev.vendTotal > 0 ? Math.round(c.hc / ev.vendTotal * 100) : 0;
+      return `<div style="display:flex;align-items:center;gap:6px;margin-bottom:4px">
+        <div style="width:8px;height:8px;border-radius:50%;background:${CORES_CANAL[i%CORES_CANAL.length]};flex-shrink:0"></div>
+        <div style="font-size:10px;color:var(--text-2);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${c.nome}</div>
+        <div style="font-size:10px;font-weight:600;color:var(--text)">${c.hc} HC</div>
+        <div style="font-size:10px;color:var(--text-3);min-width:28px;text-align:right">${pct}%</div>
+      </div>`;
+    }).join('');
 
     return `<div class="card" style="margin-bottom:var(--s3);border-left:3px solid ${ev.futuro ? 'var(--accent)' : 'var(--border)'}">
-      <div style="display:flex;align-items:center;margin-bottom:var(--s1)">
-        <span style="font-size:14px;font-weight:600;color:var(--text)">${ev.nome}</span>
-        ${diasBadge}
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s1)">
+        <span style="font-size:14px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${ev.nome}</span>
+        <div style="margin-left:var(--s3);flex-shrink:0">${diasBadge}</div>
       </div>
       <div style="font-size:11px;color:var(--text-3);margin-bottom:var(--s4)">
-        Evento: ${ev.dtEvento || '—'} · Capacidade: ${ev.capacidade || '—'}
+        📅 ${ev.dtEvento || '—'} · 🎟 Capacidade: ${ev.capacidade || '—'}
       </div>
-      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s3)">
+
+      <!-- Total + barra principal -->
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:var(--s2)">
         <div>
-          <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:var(--s2)">Total vendido</div>
-          <div style="font-size:22px;font-weight:700;color:var(--text);line-height:1;margin-bottom:var(--s2)">${ev.vendTotal}</div>
-          ${barra(ev.vendTotal, ev.capacidade, ev.pct, cor(ev.pct))}
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:2px">Total vendido</div>
+          <div style="font-size:26px;font-weight:700;font-family:var(--font-display);color:var(--text);line-height:1">${ev.vendTotal}</div>
         </div>
-        <div>
-          <div style="font-size:11px;font-weight:600;color:var(--text-2);margin-bottom:var(--s2)">VA + RC SALES</div>
-          <div style="font-size:22px;font-weight:700;color:var(--accent);line-height:1;margin-bottom:var(--s2)">${ev.vendVaRc}</div>
-          <div style="font-size:10px;color:var(--text-3)">headcounts</div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--text-3);margin-bottom:var(--s1)">Normal · ${ev.vendNormal} HC</div>
-          <div style="height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden">
-            <div style="width:${Math.min(ev.pctNormal||0,100)}%;height:100%;background:#5d9ee8;border-radius:2px"></div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--text-3);margin-bottom:var(--s1)">VIP · ${ev.vendVip} HC</div>
-          <div style="height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden">
-            <div style="width:${Math.min(ev.pctVip||0,100)}%;height:100%;background:#e8b86d;border-radius:2px"></div>
-          </div>
-        </div>
-        <div>
-          <div style="font-size:10px;color:var(--text-3);margin-bottom:var(--s1)">Upgrade · ${ev.vendUpgrade} HC</div>
-          <div style="height:4px;background:var(--bg-3);border-radius:2px;overflow:hidden">
-            <div style="width:${Math.min(ev.pctUpgrade||0,100)}%;height:100%;background:#5cb876;border-radius:2px"></div>
-          </div>
-        </div>
+        <div style="font-size:22px;font-weight:700;font-family:var(--font-display);color:${cor(ev.pct)}">${ev.pct}%</div>
       </div>
+      <div style="height:6px;background:var(--bg-3);border-radius:3px;overflow:hidden;margin-bottom:var(--s4)">
+        <div style="width:${Math.min(ev.pct,100)}%;height:100%;background:${cor(ev.pct)};border-radius:3px"></div>
+      </div>
+
+      <!-- Por Categoria -->
+      <div style="margin-bottom:var(--s4)">
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Por Categoria</div>
+        ${barra('Normal',  ev.vendNormal,  ev.capacidade, ev.pctNormal,  '#5d9ee8')}
+        ${barra('VIP',     ev.vendVip,     ev.capacidade, ev.pctVip,     '#e8b86d')}
+        ${barra('Upgrade', ev.vendUpgrade, ev.capacidade, ev.pctUpgrade, '#5cb876')}
+      </div>
+
+      <!-- Por Canal -->
+      ${canaisHtml ? `
+      <div style="border-top:1px solid var(--border);padding-top:var(--s3)">
+        <div style="font-size:10px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">Por Canal</div>
+        ${canaisHtml}
+      </div>` : ''}
     </div>`;
   },
 
