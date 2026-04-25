@@ -84,7 +84,7 @@ const Upload = {
       const obj = {};
       cabecalho.forEach((h, i) => obj[h.trim()] = (cols[i] || '').trim());
       return obj;
-    }).filter(l => l['Id da Central']);
+    }).filter(l => l['Id da Central'] && (l['Venda Teste'] || '').trim().toUpperCase() !== 'SIM');
   },
 
   _parseRow(row, sep) {
