@@ -5,6 +5,7 @@ const Upload = {
   _naoIdPlanos: [],
   _semCanal:    [],
   _eventos:     [],
+  _canais:      [],
 
   init() {
     const el = document.getElementById('upload-content');
@@ -152,7 +153,8 @@ const Upload = {
         try {
           const cfg = await API.getConfig();
           this._eventos = (cfg.eventos || []).map(e => e.nome).sort();
-        } catch { this._eventos = []; }
+          this._canais  = cfg.canais || [];
+        } catch { this._eventos = []; this._canais = []; }
         this._renderNaoId();
       } else {
         document.getElementById('upload-nao-id').innerHTML = '';
@@ -215,6 +217,7 @@ const Upload = {
               <option value="termina_com">Termina com</option>
             </select>
             <input id="sc-canal-${sid}" class="input" placeholder="Canal"
+              list="sc-canais-list" autocomplete="off"
               style="flex:2;min-width:100px;padding:5px 8px;font-size:12px">
             <button class="btn btn-sm btn-primary"
               onclick="Upload.criarRegra('${oc.replace(/'/g,"\\'")}','${sid}')">
@@ -225,6 +228,7 @@ const Upload = {
     };
 
     let html = `<div class="card" style="margin-top:var(--s4);border-color:var(--accent)">
+      <datalist id="sc-canais-list">${this._canais.sort().map(c => `<option value="${c}">`).join('')}</datalist>
       <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:var(--s4)">⚠️ ${total} item${total !== 1 ? 'ns' : ''} precisam de atenção</div>`;
 
     if (totalNaoId > 0) {
