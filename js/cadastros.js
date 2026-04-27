@@ -533,7 +533,9 @@ const CadCanais = {
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>
             </select>
-            <input id="rc-canal" class="input" placeholder="Canal (ex: TRÁFEGO)" style="flex:2;min-width:120px">
+            <input id="rc-canal" class="input" placeholder="Canal" list="rc-canais-list"
+              style="flex:2;min-width:120px" autocomplete="off">
+            <datalist id="rc-canais-list"></datalist>
             <button class="btn btn-primary btn-sm" onclick="CadCanais.adicionar()" style="flex-shrink:0">Adicionar</button>
           </div>
         </div>
@@ -552,8 +554,16 @@ const CadCanais = {
     const el = document.getElementById('rc-lista');
     el.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
     try {
-      const d = await API.getRegrасCanal();
+      const [d, cfg] = await Promise.all([API.getRegrасCanal(), API.getConfig()]);
       this.regras = d.regras || [];
+
+      // Canais existentes: das regras já cadastradas + dos dados reais
+      const canaisSet = new Set();
+      this.regras.forEach(r => canaisSet.add(r.canal));
+      (cfg.canais || []).forEach(c => canaisSet.add(c));
+      const dl = document.getElementById('rc-canais-list');
+      if (dl) dl.innerHTML = [...canaisSet].sort().map(c => `<option value="${c}">`).join('');
+
       this.renderLista();
     } catch { el.innerHTML = '<div class="empty"><div class="empty-title">Erro ao carregar</div></div>'; }
   },
