@@ -8,7 +8,7 @@ const Cadastros = {
         ${this._menuItem('🏆', 'Equipes', 'equipes')}
         ${this._menuItem('🎪', 'Eventos', 'eventos')}
         ${this._menuItem('📅', 'Calendário', 'calendario')}
-        ${this._menuItem('📡', 'Canais', 'canais')}
+        ${this._menuItem('📡', 'Regras de Canal', 'canais')}
         ${this._menuItem('🔗', 'OCs / Planos', 'ocs')}
       </div>`;
   },
@@ -370,12 +370,25 @@ const CadEventos = {
       return;
     }
     el.innerHTML = this.ocs.map(o => `
-      <div style="display:flex;align-items:center;gap:var(--s2);padding:7px 0;border-bottom:1px solid var(--border)">
-        <div style="flex:1;font-size:12px;font-family:var(--font-mono);color:var(--text)">${o.oc}</div>
-        <span style="font-size:10px;background:var(--accent-dim);color:var(--accent);border-radius:20px;padding:2px 8px">${o.canal||'—'}</span>
+      <div style="display:flex;align-items:center;gap:var(--s2);padding:7px 0;border-bottom:1px solid var(--border);flex-wrap:wrap">
+        <div style="font-size:12px;font-family:var(--font-mono);color:var(--text);min-width:160px;flex:2">${o.oc}</div>
+        <input value="${o.canal||''}" placeholder="Canal"
+          class="input" style="flex:1;min-width:100px;padding:5px 8px;font-size:12px"
+          onblur="CadEventos.atualizarCanalOC('${o.oc.replace(/'/g,"\\'")}', this.value)">
         <button onclick="CadEventos.removerOC('${o.oc.replace(/'/g,"\\'")}')"
-          style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px">×</button>
+          style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px;flex-shrink:0">×</button>
       </div>`).join('');
+  },
+
+  async atualizarCanalOC(oc, canal) {
+    if (!this.eventoAtual) return;
+    const item = this.ocs.find(o => o.oc === oc);
+    if (item && item.canal === canal) return;
+    if (item) item.canal = canal;
+    try {
+      await API.salvarOCEvento({ oc, canal, eventoCod: this.eventoAtual.codigo });
+      Utils.toast('Canal atualizado!', 'success');
+    } catch { Utils.toast('Erro ao atualizar canal', 'error'); }
   },
 
   _inferirCat(plano) {
@@ -490,10 +503,111 @@ const CadCalendario = {
   }
 };
 
-// ===== CADASTRO DE CANAIS =====
+// ===== REGRAS DE CANAL =====
 const CadCanais = {
+  regras: [],
+
   async abrir() {
-    Utils.toast('Em breve: Cadastro de Canais', '');
+    const m = document.createElement('div');
+    m.className = 'modal-overlay';
+    m.id = 'modal-canais';
+    m.innerHTML = `
+      <div class="modal" style="max-height:92vh;display:flex;flex-direction:column">
+        <div class="modal-handle"></div>
+        <div class="flex items-center justify-between" style="margin-bottom:var(--s4);flex-shrink:0">
+          <div class="modal-title">Regras de Canal</div>
+          <button class="btn btn-sm btn-secondary" onclick="document.getElementById('modal-canais').remove()">✕</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4);flex-shrink:0">
+          Define como o canal é inferido automaticamente pelo código da OC.
+        </div>
+
+        <!-- Formulário nova regra -->
+        <div class="card card-sm" style="margin-bottom:var(--s4);flex-shrink:0">
+          <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:var(--s3)">Nova Regra</div>
+          <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+            <input id="rc-padrao" class="input" placeholder="Padrão (ex: _TF_)" style="flex:2;min-width:120px">
+            <select id="rc-tipo" class="input select" style="flex:1;min-width:110px">
+              <option value="contem">Contém</option>
+              <option value="comeca_com">Começa com</option>
+              <option value="termina_com">Termina com</option>
+            </select>
+            <input id="rc-canal" class="input" placeholder="Canal (ex: TRÁFEGO)" style="flex:2;min-width:120px">
+            <button class="btn btn-primary btn-sm" onclick="CadCanais.adicionar()" style="flex-shrink:0">Adicionar</button>
+          </div>
+        </div>
+
+        <!-- Lista de regras -->
+        <div id="rc-lista" style="overflow-y:auto;flex:1">
+          <div class="spinner" style="margin:20px auto"></div>
+        </div>
+      </div>`;
+    m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+    await this.carregar();
+  },
+
+  async carregar() {
+    const el = document.getElementById('rc-lista');
+    el.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
+    try {
+      const d = await API.getRegrасCanal();
+      this.regras = d.regras || [];
+      this.renderLista();
+    } catch { el.innerHTML = '<div class="empty"><div class="empty-title">Erro ao carregar</div></div>'; }
+  },
+
+  renderLista() {
+    const el = document.getElementById('rc-lista');
+    if (!this.regras.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-title">Nenhuma regra cadastrada</div></div>';
+      return;
+    }
+
+    // Agrupa por canal
+    const porCanal = {};
+    this.regras.forEach(r => {
+      if (!porCanal[r.canal]) porCanal[r.canal] = [];
+      porCanal[r.canal].push(r);
+    });
+
+    const tipoLabel = { contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
+
+    el.innerHTML = Object.keys(porCanal).sort().map(canal => `
+      <div class="card card-sm" style="margin-bottom:var(--s3)">
+        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:var(--s3)">${canal}</div>
+        ${porCanal[canal].map(r => `
+          <div style="display:flex;align-items:center;gap:var(--s2);padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:11px;color:var(--text-3);min-width:80px">${tipoLabel[r.tipo]||r.tipo}</span>
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex:1">${r.padrao}</span>
+            <button onclick="CadCanais.remover('${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')"
+              style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px">×</button>
+          </div>`).join('')}
+      </div>`).join('');
+  },
+
+  async adicionar() {
+    const padrao = document.getElementById('rc-padrao').value.trim();
+    const tipo   = document.getElementById('rc-tipo').value;
+    const canal  = document.getElementById('rc-canal').value.trim().toUpperCase();
+    if (!padrao || !canal) { Utils.toast('Preencha padrão e canal', 'error'); return; }
+    try {
+      await API.salvarRegraCanal({ padrao, tipo, canal });
+      this.regras.push({ padrao, tipo, canal });
+      this.renderLista();
+      document.getElementById('rc-padrao').value = '';
+      document.getElementById('rc-canal').value  = '';
+      Utils.toast('Regra adicionada!', 'success');
+    } catch { Utils.toast('Erro ao salvar regra', 'error'); }
+  },
+
+  async remover(padrao, tipo) {
+    try {
+      await API.deletarRegraCanal(padrao, tipo);
+      this.regras = this.regras.filter(r => !(r.padrao === padrao && r.tipo === tipo));
+      this.renderLista();
+      Utils.toast('Removida!', 'success');
+    } catch { Utils.toast('Erro ao remover', 'error'); }
   }
 };
 

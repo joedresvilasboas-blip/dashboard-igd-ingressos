@@ -63,5 +63,7 @@ const API = {
   getUploadStatus() { return this.get('upload_status'); },
 
   // Jornada do Upgrade
-  getJornadaUpgrade(evento, filtros) { return this.post('jornada_upgrade', { evento, filtros }); },
+  getRegrасCanal() { return this.get('get_regras_canal'); },
+  salvarRegraCanal(dados) { return this.post('salvar_regra_canal', dados); },
+  deletarRegraCanal(padrao, tipo) { return this.post('deletar_regra_canal', { padrao, tipo }); },
 };
