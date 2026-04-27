@@ -573,7 +573,6 @@ const CadCanais = {
       return;
     }
 
-    // Agrupa por canal
     const porCanal = {};
     this.regras.forEach(r => {
       if (!porCanal[r.canal]) porCanal[r.canal] = [];
@@ -581,18 +580,67 @@ const CadCanais = {
     });
 
     const tipoLabel = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
+    const canaisSet = new Set(this.regras.map(r => r.canal));
+    const canaisOpts = [...canaisSet].sort().map(c => `<option value="${c}">`).join('');
 
     el.innerHTML = Object.keys(porCanal).sort().map(canal => `
       <div class="card card-sm" style="margin-bottom:var(--s3)">
         <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:var(--s3)">${canal}</div>
-        ${porCanal[canal].map(r => `
-          <div style="display:flex;align-items:center;gap:var(--s2);padding:6px 0;border-bottom:1px solid var(--border)">
-            <span style="font-size:11px;color:var(--text-3);min-width:80px">${tipoLabel[r.tipo]||r.tipo}</span>
-            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex:1">${r.padrao}</span>
-            <button onclick="CadCanais.remover('${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')"
-              style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px">×</button>
-          </div>`).join('')}
+        ${porCanal[canal].map(r => {
+          const rid = btoa(r.padrao + '|' + r.tipo).replace(/[+=\/]/g,'_');
+          return `
+          <div id="regra-${rid}" style="padding:6px 0;border-bottom:1px solid var(--border)">
+            <!-- Modo visualização -->
+            <div id="view-${rid}" style="display:flex;align-items:center;gap:var(--s2)">
+              <span style="font-size:11px;color:var(--text-3);min-width:80px">${tipoLabel[r.tipo]||r.tipo}</span>
+              <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex:1">${r.padrao}</span>
+              <button onclick="CadCanais.editarModo('${rid}')"
+                style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:0 4px" title="Editar">✏️</button>
+              <button onclick="CadCanais.remover('${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')"
+                style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px">×</button>
+            </div>
+            <!-- Modo edição -->
+            <div id="edit-${rid}" style="display:none;flex-wrap:wrap;gap:var(--s2);padding-top:var(--s2)">
+              <input id="ep-${rid}" class="input" value="${r.padrao}"
+                style="flex:2;min-width:100px;padding:5px 8px;font-size:12px">
+              <select id="et-${rid}" class="input select" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px">
+                <option value="igual_a" ${r.tipo==='igual_a'?'selected':''}>Igual a</option>
+                <option value="contem" ${r.tipo==='contem'?'selected':''}>Contém</option>
+                <option value="comeca_com" ${r.tipo==='comeca_com'?'selected':''}>Começa com</option>
+                <option value="termina_com" ${r.tipo==='termina_com'?'selected':''}>Termina com</option>
+              </select>
+              <input id="ec-${rid}" class="input" value="${r.canal}" list="rc-canais-list"
+                style="flex:2;min-width:100px;padding:5px 8px;font-size:12px" autocomplete="off">
+              <button class="btn btn-primary btn-sm"
+                onclick="CadCanais.salvarEdicao('${rid}','${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')">Salvar</button>
+              <button class="btn btn-secondary btn-sm"
+                onclick="CadCanais.editarModo('${rid}',true)">Cancelar</button>
+            </div>
+          </div>`;
+        }).join('')}
       </div>`).join('');
+  },
+
+  editarModo(rid, cancelar = false) {
+    document.getElementById('view-' + rid).style.display = cancelar ? 'flex' : 'none';
+    document.getElementById('edit-' + rid).style.display = cancelar ? 'none' : 'flex';
+  },
+
+  async salvarEdicao(rid, padraoOrig, tipoOrig) {
+    const novoPadrao = document.getElementById('ep-' + rid)?.value.trim();
+    const novoTipo   = document.getElementById('et-' + rid)?.value;
+    const novoCanal  = document.getElementById('ec-' + rid)?.value.trim().toUpperCase();
+    if (!novoPadrao || !novoCanal) { Utils.toast('Preencha todos os campos', 'error'); return; }
+    try {
+      // Remove a antiga e salva a nova
+      await API.deletarRegraCanal(padraoOrig, tipoOrig);
+      await API.salvarRegraCanal({ padrao: novoPadrao, tipo: novoTipo, canal: novoCanal });
+      // Atualiza local
+      const idx = this.regras.findIndex(r => r.padrao === padraoOrig && r.tipo === tipoOrig);
+      if (idx >= 0) this.regras[idx] = { padrao: novoPadrao, tipo: novoTipo, canal: novoCanal };
+      this.renderLista();
+      Utils.toast('Regra atualizada!', 'success');
+    } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
   async adicionar() {
