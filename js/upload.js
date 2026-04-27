@@ -216,9 +216,16 @@ const Upload = {
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>
             </select>
-            <input id="sc-canal-${sid}" class="input" placeholder="Canal"
+            <input id="sc-canal-${sid}" class="input" placeholder="Sub-canal"
               list="sc-canais-list" autocomplete="off"
               style="flex:2;min-width:100px;padding:5px 8px;font-size:12px">
+            <select id="sc-macro-${sid}" class="input select" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px">
+              <option value="">Canal Macro</option>
+              <option value="VA">VA - Venda Ativa</option>
+              <option value="VD">VD - Venda Direta</option>
+              <option value="RC">RC - Venda Recuperação</option>
+              <option value="GT">GT - Gratuito</option>
+            </select>
             <button class="btn btn-sm btn-primary"
               onclick="Upload.criarRegra('${oc.replace(/'/g,"\\'")}','${sid}')">
               Criar Regra
@@ -263,16 +270,16 @@ const Upload = {
   },
 
   async criarRegra(oc, sid) {
-    const padrao = document.getElementById('sc-padrao-' + sid)?.value.trim();
-    const tipo   = document.getElementById('sc-tipo-'   + sid)?.value || 'contem';
-    const canal  = document.getElementById('sc-canal-'  + sid)?.value.trim().toUpperCase();
+    const padrao     = document.getElementById('sc-padrao-' + sid)?.value.trim();
+    const tipo       = document.getElementById('sc-tipo-'   + sid)?.value || 'contem';
+    const canal      = document.getElementById('sc-canal-'  + sid)?.value.trim().toUpperCase();
+    const canalMacro = document.getElementById('sc-macro-'  + sid)?.value || '';
     if (!padrao || !canal) { Utils.toast('Preencha padrão e canal', 'error'); return; }
+    if (!canalMacro) { Utils.toast('Selecione o Canal Macro', 'error'); return; }
 
     try {
-      // Salva a regra
-      await API.salvarRegraCanal({ padrao, tipo, canal });
-      // Aplica retroativamente nas vendas sem canal
-      const res = await API.aplicarRegraCanal({ padrao, tipo, canal });
+      await API.salvarRegraCanal({ padrao, tipo, canal, canalMacro });
+      const res = await API.aplicarRegraCanal({ padrao, tipo, canal, canalMacro });
 
       // Remove da lista
       this._semCanal = this._semCanal.filter(x => x !== oc);
