@@ -209,6 +209,7 @@ const Upload = {
               style="flex:2;min-width:100px;padding:5px 8px;font-size:12px"
               value="${this._sugerirPadrao(oc)}">
             <select id="sc-tipo-${sid}" class="input select" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px">
+              <option value="igual_a">Igual a</option>
               <option value="contem">Contém</option>
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>

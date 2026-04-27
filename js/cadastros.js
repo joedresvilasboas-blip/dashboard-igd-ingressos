@@ -528,6 +528,7 @@ const CadCanais = {
           <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
             <input id="rc-padrao" class="input" placeholder="Padrão (ex: _TF_)" style="flex:2;min-width:120px">
             <select id="rc-tipo" class="input select" style="flex:1;min-width:110px">
+              <option value="igual_a">Igual a</option>
               <option value="contem">Contém</option>
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>
@@ -571,7 +572,7 @@ const CadCanais = {
       porCanal[r.canal].push(r);
     });
 
-    const tipoLabel = { contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
+    const tipoLabel = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
 
     el.innerHTML = Object.keys(porCanal).sort().map(canal => `
       <div class="card card-sm" style="margin-bottom:var(--s3)">
