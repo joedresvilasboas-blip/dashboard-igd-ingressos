@@ -554,13 +554,11 @@ const CadCanais = {
     const el = document.getElementById('rc-lista');
     el.innerHTML = '<div class="spinner" style="margin:20px auto"></div>';
     try {
-      const [d, cfg] = await Promise.all([API.getRegrасCanal(), API.getConfig()]);
+      const d = await API.getRegrасCanal();
       this.regras = d.regras || [];
 
-      // Canais existentes: das regras já cadastradas + dos dados reais
       const canaisSet = new Set();
       this.regras.forEach(r => canaisSet.add(r.canal));
-      (cfg.canais || []).forEach(c => canaisSet.add(c));
       const dl = document.getElementById('rc-canais-list');
       if (dl) dl.innerHTML = [...canaisSet].sort().map(c => `<option value="${c}">`).join('');
 

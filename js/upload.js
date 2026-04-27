@@ -151,9 +151,9 @@ const Upload = {
       const temProblemas = this._naoIdOCs.length || this._naoIdPlanos.length || this._semCanal.length;
       if (temProblemas) {
         try {
-          const cfg = await API.getConfig();
+          const [cfg, regras] = await Promise.all([API.getConfig(), API.getRegrасCanal()]);
           this._eventos = (cfg.eventos || []).map(e => e.nome).sort();
-          this._canais  = cfg.canais || [];
+          this._canais  = [...new Set((regras.regras || []).map(r => r.canal))].sort();
         } catch { this._eventos = []; this._canais = []; }
         this._renderNaoId();
       } else {
