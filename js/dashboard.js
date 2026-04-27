@@ -4,7 +4,7 @@ const Dashboard = {
   dados: null,
   eventosData: null,
   visao: 'geral', // geral | diario | eventos
-  filtros: { mes: [], evento: [], canal: ['VA SALES','RC SALES'], semana: [], categoria: [], status: [] },
+  filtros: { mes: [], evento: [], canal: [], canalMacro: [], semana: [], categoria: [], status: [] },
   charts: {},
   _dropAberto: null,
   _diaSel: null,
@@ -76,17 +76,20 @@ const Dashboard = {
     const cats    = c.categorias || [];
     const status  = c.status     || [];
 
+    const macros  = ['VA - Venda Ativa', 'VD - Venda Direta', 'RC - Venda Recuperação', 'GT - Gratuito'];
+
     const filtrosEl = document.getElementById('dash-filtros');
     if (!filtrosEl) return;
 
     filtrosEl.innerHTML = `
       <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;padding:10px 20px;background:var(--bg-2);border-bottom:1px solid var(--border);">
-        ${this._dropdown('dash-f-mes',    'Mês',       meses,   'mes',       [])}
-        ${this._dropdown('dash-f-sem',    'Semana',    semanas, 'semana',    [])}
-        ${this._dropdown('dash-f-evento', 'Evento',    eventos, 'evento',    [])}
-        ${this._dropdown('dash-f-canal',  'Canal',     canais,  'canal',     ['VA SALES','RC SALES'])}
-        ${this._dropdown('dash-f-cat',    'Categoria', cats,    'categoria', [])}
-        ${this._dropdown('dash-f-status', 'Status',    status,  'status',    [])}
+        ${this._dropdown('dash-f-mes',    'Mês',       meses,   'mes',        [])}
+        ${this._dropdown('dash-f-sem',    'Semana',    semanas, 'semana',     [])}
+        ${this._dropdown('dash-f-evento', 'Evento',    eventos, 'evento',     [])}
+        ${this._dropdown('dash-f-macro',  'Canal',     macros,  'canalMacro', [])}
+        ${this._dropdown('dash-f-canal',  'Sub-canal', canais,  'canal',      [])}
+        ${this._dropdown('dash-f-cat',    'Categoria', cats,    'categoria',  [])}
+        ${this._dropdown('dash-f-status', 'Status',    status,  'status',     [])}
         <button class="btn btn-sm btn-secondary" onclick="Dashboard.limparFiltros()">Limpar</button>
       </div>`;
   },
@@ -174,7 +177,7 @@ const Dashboard = {
   },
 
   limparFiltros() {
-    this.filtros = { mes: [], evento: [], canal: [], semana: [], categoria: [], status: [] };
+    this.filtros = { mes: [], evento: [], canal: [], canalMacro: [], semana: [], categoria: [], status: [] };
     this.renderFiltros();
     if (this.visao === 'eventos') this.renderEventos();
     else this.atualizar();
@@ -208,9 +211,13 @@ const Dashboard = {
         <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">HCs por Mês</div>
         <div style="position:relative;height:180px"><canvas id="chart-mes"></canvas></div>
       </div>
+      <div class="card" style="margin-bottom:var(--s3)">
+        <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Canal Macro</div>
+        <div id="chart-canal-macro"></div>
+      </div>
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s3);margin-bottom:var(--s3)">
         <div class="card">
-          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Por Canal</div>
+          <div style="font-size:12px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s4)">Sub-canal</div>
           <div id="chart-canal"></div>
         </div>
         <div class="card">
@@ -528,6 +535,7 @@ const Dashboard = {
           scales: { x: { ticks: { color: '#5a5550', font: { size: 10 } }, grid: { display: false } }, y: { ticks: { color: '#5a5550', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,0.05)' } } } }
       });
     }
+    this._renderBarras('chart-canal-macro', d.porCanalMacro || [], ['#e8b86d','#5d9ee8','#5cb876']);
     this._renderBarras('chart-canal', d.porCanal || [], CORES);
     this._renderBarras('chart-cat', d.porCategoria || [], ['#5cb876','#e8b86d','#5d9ee8','#e85d5d']);
     this._renderBarras('chart-evento', d.porEvento || [], CORES);

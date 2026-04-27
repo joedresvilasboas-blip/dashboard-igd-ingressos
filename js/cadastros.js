@@ -533,9 +533,16 @@ const CadCanais = {
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>
             </select>
-            <input id="rc-canal" class="input" placeholder="Canal" list="rc-canais-list"
+            <input id="rc-canal" class="input" placeholder="Sub-canal" list="rc-canais-list"
               style="flex:2;min-width:120px" autocomplete="off">
             <datalist id="rc-canais-list"></datalist>
+            <select id="rc-canal-macro" class="input select" style="flex:1;min-width:110px">
+              <option value="">Canal Macro</option>
+              <option value="VA">VA - Venda Ativa</option>
+              <option value="VD">VD - Venda Direta</option>
+              <option value="RC">RC - Venda Recuperação</option>
+              <option value="GT">GT - Gratuito</option>
+            </select>
             <button class="btn btn-primary btn-sm" onclick="CadCanais.adicionar()" style="flex-shrink:0">Adicionar</button>
           </div>
         </div>
@@ -583,23 +590,27 @@ const CadCanais = {
     const canaisSet = new Set(this.regras.map(r => r.canal));
     const canaisOpts = [...canaisSet].sort().map(c => `<option value="${c}">`).join('');
 
+    const macroLabel = { VA: 'VA', VD: 'VD', RC: 'RC' };
+    const macroColor = { VA: 'var(--accent)', VD: 'var(--blue)', RC: 'var(--green)' };
+
     el.innerHTML = Object.keys(porCanal).sort().map(canal => `
       <div class="card card-sm" style="margin-bottom:var(--s3)">
-        <div style="font-size:12px;font-weight:600;color:var(--accent);margin-bottom:var(--s3)">${canal}</div>
+        <div style="display:flex;align-items:center;gap:var(--s2);margin-bottom:var(--s3)">
+          <div style="font-size:12px;font-weight:600;color:var(--accent)">${canal}</div>
+          ${porCanal[canal][0].canalMacro ? `<span style="font-size:10px;padding:1px 8px;border-radius:20px;background:var(--bg-3);color:${macroColor[porCanal[canal][0].canalMacro]||'var(--text-3)'};border:1px solid currentColor">${porCanal[canal][0].canalMacro}</span>` : ''}
+        </div>
         ${porCanal[canal].map(r => {
           const rid = btoa(r.padrao + '|' + r.tipo).replace(/[+=\/]/g,'_');
           return `
           <div id="regra-${rid}" style="padding:6px 0;border-bottom:1px solid var(--border)">
-            <!-- Modo visualização -->
             <div id="view-${rid}" style="display:flex;align-items:center;gap:var(--s2)">
               <span style="font-size:11px;color:var(--text-3);min-width:80px">${tipoLabel[r.tipo]||r.tipo}</span>
               <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex:1">${r.padrao}</span>
               <button onclick="CadCanais.editarModo('${rid}')"
-                style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:0 4px" title="Editar">✏️</button>
+                style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:0 4px">✏️</button>
               <button onclick="CadCanais.remover('${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')"
                 style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:16px;padding:0 4px">×</button>
             </div>
-            <!-- Modo edição -->
             <div id="edit-${rid}" style="display:none;flex-wrap:wrap;gap:var(--s2);padding-top:var(--s2)">
               <input id="ep-${rid}" class="input" value="${r.padrao}"
                 style="flex:2;min-width:100px;padding:5px 8px;font-size:12px">
@@ -611,6 +622,13 @@ const CadCanais = {
               </select>
               <input id="ec-${rid}" class="input" value="${r.canal}" list="rc-canais-list"
                 style="flex:2;min-width:100px;padding:5px 8px;font-size:12px" autocomplete="off">
+              <select id="em-${rid}" class="input select" style="flex:1;min-width:90px;font-size:12px;padding:5px 8px">
+                <option value="" ${!r.canalMacro?'selected':''}>Macro</option>
+                <option value="VA" ${r.canalMacro==='VA'?'selected':''}>VA</option>
+                <option value="VD" ${r.canalMacro==='VD'?'selected':''}>VD</option>
+                <option value="RC" ${r.canalMacro==='RC'?'selected':''}>RC</option>
+                <option value="GT" ${r.canalMacro==='GT'?'selected':''}>GT</option>
+              </select>
               <button class="btn btn-primary btn-sm"
                 onclick="CadCanais.salvarEdicao('${rid}','${r.padrao.replace(/'/g,"\\'")}','${r.tipo}')">Salvar</button>
               <button class="btn btn-secondary btn-sm"
@@ -627,33 +645,35 @@ const CadCanais = {
   },
 
   async salvarEdicao(rid, padraoOrig, tipoOrig) {
-    const novoPadrao = document.getElementById('ep-' + rid)?.value.trim();
-    const novoTipo   = document.getElementById('et-' + rid)?.value;
-    const novoCanal  = document.getElementById('ec-' + rid)?.value.trim().toUpperCase();
+    const novoPadrao  = document.getElementById('ep-' + rid)?.value.trim();
+    const novoTipo    = document.getElementById('et-' + rid)?.value;
+    const novoCanal   = document.getElementById('ec-' + rid)?.value.trim().toUpperCase();
+    const novoCanalMacro = document.getElementById('em-' + rid)?.value || '';
     if (!novoPadrao || !novoCanal) { Utils.toast('Preencha todos os campos', 'error'); return; }
     try {
-      // Remove a antiga e salva a nova
       await API.deletarRegraCanal(padraoOrig, tipoOrig);
-      await API.salvarRegraCanal({ padrao: novoPadrao, tipo: novoTipo, canal: novoCanal });
-      // Atualiza local
+      await API.salvarRegraCanal({ padrao: novoPadrao, tipo: novoTipo, canal: novoCanal, canalMacro: novoCanalMacro });
       const idx = this.regras.findIndex(r => r.padrao === padraoOrig && r.tipo === tipoOrig);
-      if (idx >= 0) this.regras[idx] = { padrao: novoPadrao, tipo: novoTipo, canal: novoCanal };
+      if (idx >= 0) this.regras[idx] = { padrao: novoPadrao, tipo: novoTipo, canal: novoCanal, canalMacro: novoCanalMacro };
       this.renderLista();
       Utils.toast('Regra atualizada!', 'success');
     } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
   async adicionar() {
-    const padrao = document.getElementById('rc-padrao').value.trim();
-    const tipo   = document.getElementById('rc-tipo').value;
-    const canal  = document.getElementById('rc-canal').value.trim().toUpperCase();
-    if (!padrao || !canal) { Utils.toast('Preencha padrão e canal', 'error'); return; }
+    const padrao     = document.getElementById('rc-padrao').value.trim();
+    const tipo       = document.getElementById('rc-tipo').value;
+    const canal      = document.getElementById('rc-canal').value.trim().toUpperCase();
+    const canalMacro = document.getElementById('rc-canal-macro').value;
+    if (!padrao || !canal) { Utils.toast('Preencha padrão e sub-canal', 'error'); return; }
+    if (!canalMacro) { Utils.toast('Selecione o Canal Macro', 'error'); return; }
     try {
-      await API.salvarRegraCanal({ padrao, tipo, canal });
-      this.regras.push({ padrao, tipo, canal });
+      await API.salvarRegraCanal({ padrao, tipo, canal, canalMacro });
+      this.regras.push({ padrao, tipo, canal, canalMacro });
       this.renderLista();
       document.getElementById('rc-padrao').value = '';
       document.getElementById('rc-canal').value  = '';
+      document.getElementById('rc-canal-macro').value = '';
       Utils.toast('Regra adicionada!', 'success');
     } catch { Utils.toast('Erro ao salvar regra', 'error'); }
   },
