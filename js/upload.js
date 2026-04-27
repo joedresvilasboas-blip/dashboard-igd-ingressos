@@ -3,6 +3,7 @@ const Upload = {
   linhas: [],
   _naoIdOCs:    [],
   _naoIdPlanos: [],
+  _semCanal:    [],
   _eventos:     [],
 
   init() {
@@ -144,9 +145,10 @@ const Upload = {
 
       this._naoIdOCs    = res.ocsNaoId    || [];
       this._naoIdPlanos = res.planosNaoId || [];
+      this._semCanal    = res.semCanal    || [];
 
-      if (this._naoIdOCs.length || this._naoIdPlanos.length) {
-        // Carrega lista de eventos para o seletor
+      const temProblemas = this._naoIdOCs.length || this._naoIdPlanos.length || this._semCanal.length;
+      if (temProblemas) {
         try {
           const cfg = await API.getConfig();
           this._eventos = (cfg.eventos || []).map(e => e.nome).sort();
@@ -164,7 +166,10 @@ const Upload = {
   },
 
   _renderNaoId() {
-    const total = this._naoIdOCs.length + this._naoIdPlanos.length;
+    const totalNaoId = this._naoIdOCs.length + this._naoIdPlanos.length;
+    const totalSemCanal = this._semCanal.length;
+    const total = totalNaoId + totalSemCanal;
+
     if (!total) {
       document.getElementById('upload-nao-id').innerHTML = '';
       return;
@@ -174,47 +179,114 @@ const Upload = {
       `<option value="${e}">${e}</option>`
     ).join('');
 
-    const renderItem = (codigo, tipo) => `
-      <div id="nid-${btoa(codigo).replace(/=/g,'')}" style="padding:var(--s3) 0;border-bottom:1px solid var(--border)">
+    // Item de OC/Plano não vinculado a evento
+    const renderItemNaoId = (codigo, tipo) => `
+      <div id="nid-${btoa(unescape(encodeURIComponent(codigo))).replace(/[+=\/]/g,'_')}"
+        style="padding:var(--s3) 0;border-bottom:1px solid var(--border)">
         <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:var(--s2)">${codigo}</div>
         <div style="display:flex;gap:var(--s2);align-items:center;flex-wrap:wrap">
           <select class="input select" style="flex:1;min-width:160px;font-size:12px;padding:6px 10px"
-            id="sel-${btoa(codigo).replace(/=/g,'')}">
+            id="sel-${btoa(unescape(encodeURIComponent(codigo))).replace(/[+=\/]/g,'_')}">
             <option value="">— Selecionar evento —</option>
             ${optsEvento}
           </select>
-          <button class="btn btn-sm btn-primary" onclick="Upload.vincular('${codigo.replace(/'/g,"\\'")}','${tipo}')">
+          <button class="btn btn-sm btn-primary"
+            onclick="Upload.vincular('${codigo.replace(/'/g,"\\'")}','${tipo}')">
             Vincular
           </button>
         </div>
       </div>`;
 
-    let html = `
-      <div class="card" style="margin-top:var(--s4);border-color:var(--accent)">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s2)">
-          <div style="font-size:13px;font-weight:600;color:var(--accent)">⚠️ ${total} não identificado${total !== 1 ? 's' : ''}</div>
-          <span style="font-size:11px;color:var(--text-3)">Vincule a um evento</span>
-        </div>
-        <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
-          Após vincular, reimporte o CSV para atualizar os dados corretamente.
+    // Item de OC sem canal — formulário de criar regra
+    const renderItemSemCanal = (oc) => {
+      const sid = btoa(unescape(encodeURIComponent(oc))).replace(/[+=\/]/g,'_');
+      return `
+        <div id="sc-${sid}" style="padding:var(--s3) 0;border-bottom:1px solid var(--border)">
+          <div style="font-family:var(--font-mono);font-size:11px;color:var(--text);margin-bottom:var(--s2)">${oc}</div>
+          <div style="font-size:11px;color:var(--text-3);margin-bottom:var(--s2)">Nenhuma regra de canal encontrada. Crie uma regra:</div>
+          <div style="display:flex;gap:var(--s2);flex-wrap:wrap;align-items:center">
+            <input id="sc-padrao-${sid}" class="input" placeholder="Padrão (ex: _TF_)"
+              style="flex:2;min-width:100px;padding:5px 8px;font-size:12px"
+              value="${this._sugerirPadrao(oc)}">
+            <select id="sc-tipo-${sid}" class="input select" style="flex:1;min-width:100px;font-size:12px;padding:5px 8px">
+              <option value="contem">Contém</option>
+              <option value="comeca_com">Começa com</option>
+              <option value="termina_com">Termina com</option>
+            </select>
+            <input id="sc-canal-${sid}" class="input" placeholder="Canal"
+              style="flex:2;min-width:100px;padding:5px 8px;font-size:12px">
+            <button class="btn btn-sm btn-primary"
+              onclick="Upload.criarRegra('${oc.replace(/'/g,"\\'")}','${sid}')">
+              Criar Regra
+            </button>
+          </div>
         </div>`;
+    };
 
-    if (this._naoIdOCs.length) {
-      html += `<div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">OCs (${this._naoIdOCs.length})</div>`;
-      html += this._naoIdOCs.map(oc => renderItem(oc, 'oc')).join('');
+    let html = `<div class="card" style="margin-top:var(--s4);border-color:var(--accent)">
+      <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:var(--s4)">⚠️ ${total} item${total !== 1 ? 'ns' : ''} precisam de atenção</div>`;
+
+    if (totalNaoId > 0) {
+      html += `<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:var(--s3)">
+        Sem evento vinculado (${totalNaoId})</div>`;
+      if (this._naoIdOCs.length) {
+        html += `<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:var(--s2)">OCs</div>`;
+        html += this._naoIdOCs.map(oc => renderItemNaoId(oc, 'oc')).join('');
+      }
+      if (this._naoIdPlanos.length) {
+        html += `<div style="font-size:11px;color:var(--text-3);text-transform:uppercase;letter-spacing:.06em;margin:var(--s3) 0 var(--s2)">Planos</div>`;
+        html += this._naoIdPlanos.map(p => renderItemNaoId(p, 'plano')).join('');
+      }
     }
 
-    if (this._naoIdPlanos.length) {
-      html += `<div style="font-size:11px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.06em;margin:var(--s4) 0 var(--s2)">Planos (${this._naoIdPlanos.length})</div>`;
-      html += this._naoIdPlanos.map(p => renderItem(p, 'plano')).join('');
+    if (totalSemCanal > 0) {
+      if (totalNaoId > 0) html += `<div class="divider"></div>`;
+      html += `<div style="font-size:12px;font-weight:600;color:var(--text-2);margin-bottom:var(--s3)">
+        Sem canal identificado (${totalSemCanal})</div>`;
+      html += this._semCanal.map(oc => renderItemSemCanal(oc)).join('');
     }
 
     html += `</div>`;
     document.getElementById('upload-nao-id').innerHTML = html;
   },
 
+  // Sugere um padrão baseado no código da OC
+  _sugerirPadrao(oc) {
+    const partes = oc.split('_').filter(p => p.length > 1);
+    // Pega o último segmento como sugestão
+    return partes.length >= 2 ? '_' + partes[partes.length - 1] + '_' : '';
+  },
+
+  async criarRegra(oc, sid) {
+    const padrao = document.getElementById('sc-padrao-' + sid)?.value.trim();
+    const tipo   = document.getElementById('sc-tipo-'   + sid)?.value || 'contem';
+    const canal  = document.getElementById('sc-canal-'  + sid)?.value.trim().toUpperCase();
+    if (!padrao || !canal) { Utils.toast('Preencha padrão e canal', 'error'); return; }
+
+    try {
+      // Salva a regra
+      await API.salvarRegraCanal({ padrao, tipo, canal });
+      // Aplica retroativamente nas vendas sem canal
+      const res = await API.aplicarRegraCanal({ padrao, tipo, canal });
+
+      // Remove da lista
+      this._semCanal = this._semCanal.filter(x => x !== oc);
+      const el = document.getElementById('sc-' + sid);
+      if (el) el.remove();
+
+      const msg = res.atualizados > 0
+        ? `Regra criada! ${res.atualizados} venda${res.atualizados !== 1 ? 's' : ''} atualizada${res.atualizados !== 1 ? 's' : ''}`
+        : `Regra criada para "${canal}"`;
+      Utils.toast(msg, 'success');
+
+      if (!this._naoIdOCs.length && !this._naoIdPlanos.length && !this._semCanal.length) {
+        document.getElementById('upload-nao-id').innerHTML = '';
+      }
+    } catch { Utils.toast('Erro ao criar regra', 'error'); }
+  },
+
   async vincular(codigo, tipo) {
-    const id  = btoa(codigo).replace(/=/g, '');
+    const id  = btoa(unescape(encodeURIComponent(codigo))).replace(/[+=\/]/g, '_');
     const sel = document.getElementById('sel-' + id);
     const evento = sel ? sel.value : '';
     if (!evento) { Utils.toast('Selecione um evento', 'error'); return; }
@@ -228,7 +300,6 @@ const Upload = {
       if (tipo === 'oc') this._naoIdOCs = this._naoIdOCs.filter(x => x !== codigo);
       else               this._naoIdPlanos = this._naoIdPlanos.filter(x => x !== codigo);
 
-      // Remove o item da tela
       const el = document.getElementById('nid-' + id);
       if (el) el.remove();
 
@@ -237,11 +308,10 @@ const Upload = {
         : `Vinculado a ${evento}!`;
       Utils.toast(msg, 'success');
 
-      // Se não sobrou nada, limpa o card
-      if (!this._naoIdOCs.length && !this._naoIdPlanos.length) {
+      if (!this._naoIdOCs.length && !this._naoIdPlanos.length && !this._semCanal.length) {
         document.getElementById('upload-nao-id').innerHTML = '';
       }
-    } catch { 
+    } catch {
       Utils.toast('Erro ao vincular', 'error');
       Utils.btnLoading(btn, false);
     }

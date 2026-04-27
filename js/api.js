@@ -66,4 +66,5 @@ const API = {
   getRegrасCanal() { return this.get('get_regras_canal'); },
   salvarRegraCanal(dados) { return this.post('salvar_regra_canal', dados); },
   deletarRegraCanal(padrao, tipo) { return this.post('deletar_regra_canal', { padrao, tipo }); },
+  aplicarRegraCanal(dados) { return this.post('aplicar_regra_canal', dados); },
 };
