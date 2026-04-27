@@ -525,7 +525,7 @@ const CadCanais = {
         <!-- Formulário nova regra -->
         <div class="card card-sm" style="margin-bottom:var(--s4);flex-shrink:0">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:var(--s3)">Nova Regra</div>
-          <div style="display:flex;gap:var(--s2);flex-wrap:wrap">
+          <div style="display:flex;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s3)">
             <input id="rc-padrao" class="input" placeholder="Padrão (ex: _TF_)" style="flex:2;min-width:120px">
             <select id="rc-tipo" class="input select" style="flex:1;min-width:110px">
               <option value="igual_a">Igual a</option>
@@ -537,13 +537,21 @@ const CadCanais = {
               style="flex:2;min-width:120px" autocomplete="off">
             <datalist id="rc-canais-list"></datalist>
             <select id="rc-canal-macro" class="input select" style="flex:1;min-width:110px">
-              <option value="">Canal Macro</option>
+              <option value="">Canal Macro *</option>
               <option value="VA">VA - Venda Ativa</option>
               <option value="VD">VD - Venda Direta</option>
               <option value="RC">RC - Venda Recuperação</option>
               <option value="GT">GT - Gratuito</option>
             </select>
-            <button class="btn btn-primary btn-sm" onclick="CadCanais.adicionar()" style="flex-shrink:0">Adicionar</button>
+            <button class="btn btn-secondary btn-sm" onclick="CadCanais.adicionarRascunho()" style="flex-shrink:0">+ Adicionar</button>
+          </div>
+          <!-- Rascunho -->
+          <div id="rc-rascunho" style="display:none;margin-bottom:var(--s3)">
+            <div style="font-size:11px;color:var(--text-3);margin-bottom:var(--s2)">Pendentes de salvar:</div>
+            <div id="rc-rascunho-lista"></div>
+            <button class="btn btn-primary btn-full" style="margin-top:var(--s3)" onclick="CadCanais.salvarRascunho()">
+              Salvar Todas na Planilha
+            </button>
           </div>
         </div>
 
@@ -660,22 +668,60 @@ const CadCanais = {
     } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
-  async adicionar() {
+  _rascunho: [],
+
+  adicionarRascunho() {
     const padrao     = document.getElementById('rc-padrao').value.trim();
     const tipo       = document.getElementById('rc-tipo').value;
     const canal      = document.getElementById('rc-canal').value.trim().toUpperCase();
     const canalMacro = document.getElementById('rc-canal-macro').value;
     if (!padrao || !canal) { Utils.toast('Preencha padrão e sub-canal', 'error'); return; }
     if (!canalMacro) { Utils.toast('Selecione o Canal Macro', 'error'); return; }
+
+    this._rascunho.push({ padrao, tipo, canal, canalMacro });
+    this._renderRascunho();
+
+    document.getElementById('rc-padrao').value = '';
+    document.getElementById('rc-canal').value  = '';
+  },
+
+  _renderRascunho() {
+    const wrap = document.getElementById('rc-rascunho');
+    const lista = document.getElementById('rc-rascunho-lista');
+    if (!this._rascunho.length) { wrap.style.display = 'none'; return; }
+    wrap.style.display = 'block';
+    const tipoLabel = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
+    lista.innerHTML = this._rascunho.map((r, i) => `
+      <div style="display:flex;align-items:center;gap:var(--s2);padding:5px 0;border-bottom:1px solid var(--border)">
+        <span style="font-size:10px;color:var(--text-3);min-width:60px">${tipoLabel[r.tipo]}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);flex:1">${r.padrao}</span>
+        <span style="font-size:11px;color:var(--accent)">${r.canal}</span>
+        <span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 6px;border-radius:10px">${r.canalMacro}</span>
+        <button onclick="CadCanais._removerRascunho(${i})"
+          style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:14px;padding:0 2px">×</button>
+      </div>`).join('');
+  },
+
+  _removerRascunho(i) {
+    this._rascunho.splice(i, 1);
+    this._renderRascunho();
+  },
+
+  async salvarRascunho() {
+    if (!this._rascunho.length) return;
+    const total = this._rascunho.length;
     try {
-      await API.salvarRegraCanal({ padrao, tipo, canal, canalMacro });
-      this.regras.push({ padrao, tipo, canal, canalMacro });
+      for (const r of this._rascunho) {
+        await API.salvarRegraCanal(r);
+        if (!this.regras.find(x => x.padrao === r.padrao && x.tipo === r.tipo)) {
+          this.regras.push(r);
+        }
+      }
+      this._rascunho = [];
+      this._renderRascunho();
       this.renderLista();
-      document.getElementById('rc-padrao').value = '';
-      document.getElementById('rc-canal').value  = '';
-      document.getElementById('rc-canal-macro').value = '';
-      Utils.toast('Regra adicionada!', 'success');
-    } catch { Utils.toast('Erro ao salvar regra', 'error'); }
+      Utils.toast(`${total} regra${total > 1 ? 's' : ''} salva${total > 1 ? 's' : ''}!`, 'success');
+    } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
   async remover(padrao, tipo) {
