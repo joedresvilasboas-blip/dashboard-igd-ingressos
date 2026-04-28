@@ -14,7 +14,11 @@ const Dashboard = {
     const el = document.getElementById('dash-content');
     el.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:200px"><div class="spinner"></div></div>';
     try {
-      if (!this.config) this.config = await API.get('config');
+      // Carrega config e dados em paralelo
+      const [config] = await Promise.all([
+        this.config ? Promise.resolve(this.config) : API.get('config'),
+      ]);
+      this.config = config;
       this.renderFiltros();
       this.renderVisoes();
       await this.atualizar();
@@ -76,7 +80,7 @@ const Dashboard = {
     const cats    = c.categorias || [];
     const status  = c.status     || [];
 
-    const macros  = ['VA - Venda Ativa', 'VD - Venda Direta', 'RC - Venda Recuperação', 'GT - Gratuito'];
+    const macros  = c.canaisMacro || ['VA','VD','RC','GT'];
 
     const filtrosEl = document.getElementById('dash-filtros');
     if (!filtrosEl) return;
