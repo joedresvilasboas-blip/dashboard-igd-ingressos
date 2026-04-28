@@ -131,24 +131,37 @@ const Upload = {
     const btn = document.getElementById('btn-importar');
     Utils.btnLoading(btn, true);
     try {
-      const res = await API.uploadCSV(this.linhas);
-      if (res.erro) {
-        Utils.toast('Erro do servidor: ' + res.erro, 'error');
-        Utils.btnLoading(btn, false);
-        return;
+      const LOTE = 500;
+      let totalImportados = 0, totalAtualizados = 0, totalErros = 0;
+      let ocsNaoId = [], planosNaoId = [], semCanal = [];
+
+      for (let i = 0; i < this.linhas.length; i += LOTE) {
+        const lote = this.linhas.slice(i, i + LOTE);
+        const progresso = Math.round((i / this.linhas.length) * 100);
+        btn.innerHTML = `<div class="spinner" style="width:16px;height:16px;border-width:2px;display:inline-block;vertical-align:middle;margin-right:6px"></div>${progresso}% — ${i} de ${this.linhas.length}`;
+
+        const res = await API.uploadCSV(lote);
+        if (res.erro) { Utils.toast('Erro: ' + res.erro, 'error'); break; }
+
+        totalImportados  += res.importados  || 0;
+        totalAtualizados += res.atualizados || 0;
+        totalErros       += res.erros       || 0;
+        ocsNaoId    = [...new Set([...ocsNaoId,    ...(res.ocsNaoId    || [])])];
+        planosNaoId = [...new Set([...planosNaoId, ...(res.planosNaoId || [])])];
+        semCanal    = [...new Set([...semCanal,    ...(res.semCanal    || [])])];
       }
 
       const msgs = [];
-      if (res.importados > 0) msgs.push(`${res.importados} importadas`);
-      if (res.atualizados > 0) msgs.push(`${res.atualizados} atualizadas`);
+      if (totalImportados  > 0) msgs.push(`${totalImportados} importadas`);
+      if (totalAtualizados > 0) msgs.push(`${totalAtualizados} atualizadas`);
       if (msgs.length) Utils.toast(msgs.join(' · ') + '!', 'success');
-      if (res.erros > 0) Utils.toast(`${res.erros} erros`, 'error');
+      if (totalErros > 0) Utils.toast(`${totalErros} erros`, 'error');
 
-      this._naoIdOCs    = res.ocsNaoId    || [];
-      this._naoIdPlanos = res.planosNaoId || [];
-      this._semCanal    = res.semCanal    || [];
+      this._naoIdOCs    = ocsNaoId;
+      this._naoIdPlanos = planosNaoId;
+      this._semCanal    = semCanal;
 
-      const temProblemas = this._naoIdOCs.length || this._naoIdPlanos.length || this._semCanal.length;
+      const temProblemas = ocsNaoId.length || planosNaoId.length || semCanal.length;
       if (temProblemas) {
         try {
           const [cfg, regras] = await Promise.all([API.getConfig(), API.getRegrасCanal()]);
