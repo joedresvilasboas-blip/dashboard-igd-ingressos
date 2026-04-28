@@ -198,7 +198,10 @@ const CadEventos = {
           <div style="margin-top:var(--s5)">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s3)">
               <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)">Planos</div>
-              <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddPlano()">+ Adicionar</button>
+              <div style="display:flex;gap:var(--s2)">
+                <button class="btn btn-sm btn-secondary" onclick="CadEventos.reprocessarCategorias()" title="Reaplica a inferência de categoria em todos os planos">↺ Reprocessar Categorias</button>
+                <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddPlano()">+ Adicionar</button>
+              </div>
             </div>
             <div id="ev-add-plano" style="display:none;margin-bottom:var(--s3)">
               <textarea id="ev-novo-plano" class="input" rows="4"
@@ -452,6 +455,14 @@ const CadEventos = {
       const ign = res.ignorados > 0 ? ` · ${res.ignorados} já existia${res.ignorados !== 1 ? 'm' : ''}` : '';
       Utils.toast(msg + ign, 'success');
     } catch { Utils.toast('Erro ao salvar OCs', 'error'); }
+  },
+
+  async reprocessarCategorias() {
+    if (!this.eventoAtual) return;
+    try {
+      const res = await API.post('reprocessar_categorias_evento', { eventoCod: this.eventoAtual.codigo });
+      Utils.toast(`${res.atualizados} plano${res.atualizados !== 1 ? 's' : ''} atualizado${res.atualizados !== 1 ? 's' : ''}!`, 'success');
+    } catch { Utils.toast('Erro ao reprocessar', 'error'); }
   },
 
   async reprocessarCanais() {
