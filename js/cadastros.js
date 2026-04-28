@@ -9,7 +9,7 @@ const Cadastros = {
         ${this._menuItem('🎪', 'Eventos', 'eventos')}
         ${this._menuItem('📅', 'Calendário', 'calendario')}
         ${this._menuItem('📡', 'Regras de Canal', 'canais')}
-        ${this._menuItem('🔗', 'OCs / Planos', 'ocs')}
+        ${this._menuItem('🔗', 'OCs & Planos', 'ocs')}
       </div>`;
   },
 
@@ -764,9 +764,74 @@ const CadCanais = {
   }
 };
 
-// ===== CADASTRO DE OCs =====
+// ===== OCs / PLANOS — OPERAÇÕES EM MASSA =====
 const CadOCs = {
   async abrir() {
-    Utils.toast('Em breve: Cadastro de OCs/Planos', '');
-  }
+    const m = document.createElement('div');
+    m.className = 'modal-overlay';
+    m.id = 'modal-ocs';
+    m.innerHTML = `
+      <div class="modal" style="max-height:92vh;display:flex;flex-direction:column">
+        <div class="modal-handle"></div>
+        <div class="flex items-center justify-between" style="margin-bottom:var(--s4);flex-shrink:0">
+          <div class="modal-title">OCs &amp; Planos</div>
+          <button class="btn btn-sm btn-secondary" onclick="document.getElementById('modal-ocs').remove()">✕</button>
+        </div>
+        <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s5);flex-shrink:0">
+          Operações em massa para todos os eventos. Use com cautela — atualiza a planilha inteira.
+        </div>
+
+        <div class="card card-sm" style="margin-bottom:var(--s3)">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:var(--s2)">↺ Reprocessar Canais</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
+            Relê as Regras de Canal e atualiza o Sub-canal e Canal Macro de todas as OCs e todas as vendas da planilha.
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-rep-canais" onclick="CadOCs.reprocessarCanais()">
+            Reprocessar Todos os Canais
+          </button>
+          <div id="res-canais" style="margin-top:var(--s3);font-size:12px;color:var(--text-3)"></div>
+        </div>
+
+        <div class="card card-sm" style="margin-bottom:var(--s3)">
+          <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:var(--s2)">↺ Reprocessar Categorias</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
+            Relê o Plano de cada venda e atualiza a coluna CATEGORIA (NORMAL, VIP, ESSENTIAL, UPGRADE) em toda a planilha.
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-rep-cats" onclick="CadOCs.reprocessarCategorias()">
+            Reprocessar Todas as Categorias
+          </button>
+          <div id="res-cats" style="margin-top:var(--s3);font-size:12px;color:var(--text-3)"></div>
+        </div>
+      </div>`;
+    m.addEventListener('click', e => { if (e.target === m) m.remove(); });
+    document.body.appendChild(m);
+  },
+
+  async reprocessarCanais() {
+    const btn = document.getElementById('btn-rep-canais');
+    const res_el = document.getElementById('res-canais');
+    Utils.btnLoading(btn, true);
+    res_el.textContent = 'Processando... pode demorar alguns segundos.';
+    try {
+      const res = await API.reprocessarTodosCanais();
+      res_el.innerHTML = `<span style="color:var(--green)">✓ ${res.atualizadosOCS} OCs e ${res.atualizadosVendas} vendas atualizadas!</span>`;
+    } catch {
+      res_el.innerHTML = `<span style="color:var(--red)">Erro ao reprocessar</span>`;
+    }
+    Utils.btnLoading(btn, false);
+  },
+
+  async reprocessarCategorias() {
+    const btn = document.getElementById('btn-rep-cats');
+    const res_el = document.getElementById('res-cats');
+    Utils.btnLoading(btn, true);
+    res_el.textContent = 'Processando... pode demorar alguns segundos.';
+    try {
+      const res = await API.reprocessarTodasCategorias();
+      res_el.innerHTML = `<span style="color:var(--green)">✓ ${res.atualizados} vendas atualizadas!</span>`;
+    } catch {
+      res_el.innerHTML = `<span style="color:var(--red)">Erro ao reprocessar</span>`;
+    }
+    Utils.btnLoading(btn, false);
+  },
 };

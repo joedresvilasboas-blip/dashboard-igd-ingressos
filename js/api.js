@@ -54,6 +54,8 @@ const API = {
   salvarOCsLote(eventoCod, ocs) { return this.post('salvar_ocs_lote', { eventoCod, ocs }); },
   salvarPlanosLote(eventoCod, planos) { return this.post('salvar_planos_lote', { eventoCod, planos }); },
   vincularAtualizar(tipo, codigo, eventoCod) { return this.post('vincular_atualizar', { tipo, codigo, eventoCod }); },
+  reprocessarTodosCanais() { return this.post('reprocessar_todos_canais', {}); },
+  reprocessarTodasCategorias() { return this.post('reprocessar_todas_categorias', {}); },
   deletarOCEvento(oc, eventoCod) { return this.post('deletar_oc_evento', { oc, eventoCod }); },
   deletarPlanoEvento(plano, eventoCod) { return this.post('deletar_plano_evento', { plano, eventoCod }); },
   deletar(tipo, id) { return this.post('deletar', { tipo, id }); },
