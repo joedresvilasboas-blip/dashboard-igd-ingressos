@@ -317,11 +317,7 @@ const CadEventos = {
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--s3)">
         <div class="input-group" style="grid-column:1/-1;margin-bottom:0">
           <label class="input-label">Nome do Evento *</label>
-          <input id="ev-nome" class="input" value="${ev.nome||''}" placeholder="Ex: IMLS FLN - ABR26">
-        </div>
-        <div class="input-group" style="margin-bottom:0">
-          <label class="input-label">Sigla *</label>
-          <input id="ev-sigla" class="input" value="${ev.sigla||ev.codigo||''}" placeholder="Ex: IMLS FLN - ABR26">
+          <input id="ev-nome" class="input" value="${ev.nome||''}" placeholder="Ex: IMLS BH - JAN26">
         </div>
         <div class="input-group" style="margin-bottom:0">
           <label class="input-label">Cidade</label>
@@ -500,7 +496,6 @@ const CadEventos = {
   async salvarEvento() {
     const dados = {
       nome:       document.getElementById('ev-nome').value.trim(),
-      sigla:      document.getElementById('ev-sigla').value.trim(),
       cidade:     document.getElementById('ev-cidade').value.trim(),
       capacidade: document.getElementById('ev-capacidade').value.trim(),
       mesAno:     document.getElementById('ev-mesano').value.trim(),
@@ -509,15 +504,14 @@ const CadEventos = {
       dtFimEv:    document.getElementById('ev-dtfim').value,
       produto:    'IGR',
     };
-    if (!dados.nome || !dados.sigla) { Utils.toast('Nome e Sigla são obrigatórios', 'error'); return; }
+    if (!dados.nome) { Utils.toast('Nome é obrigatório', 'error'); return; }
     try {
       await API.salvarEvento(dados);
-      this.eventoAtual = { ...dados, codigo: dados.sigla };
+      this.eventoAtual = { ...dados, codigo: dados.nome };
       Utils.toast('Evento salvo!', 'success');
-      // Atualiza lista local
-      const idx = this.eventos.findIndex(e => e.codigo === dados.sigla);
-      if (idx >= 0) this.eventos[idx] = { ...this.eventos[idx], ...dados, codigo: dados.sigla };
-      else this.eventos.push({ ...dados, codigo: dados.sigla });
+      const idx = this.eventos.findIndex(e => e.codigo === dados.nome);
+      if (idx >= 0) this.eventos[idx] = { ...this.eventos[idx], ...dados, codigo: dados.nome };
+      else this.eventos.push({ ...dados, codigo: dados.nome });
     } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 };
