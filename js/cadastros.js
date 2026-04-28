@@ -541,12 +541,16 @@ const CadCanais = {
         <div class="card card-sm" style="margin-bottom:var(--s4);flex-shrink:0">
           <div style="font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3);margin-bottom:var(--s3)">Nova Regra</div>
           <div style="display:flex;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s3)">
-            <input id="rc-padrao" class="input" placeholder="Padrão (ex: _TF_)" style="flex:2;min-width:120px">
+            <input id="rc-padrao" class="input" placeholder="Padrão (ex: _TF_ ou HOTMART)" style="flex:2;min-width:120px">
             <select id="rc-tipo" class="input select" style="flex:1;min-width:110px">
               <option value="igual_a">Igual a</option>
               <option value="contem">Contém</option>
               <option value="comeca_com">Começa com</option>
               <option value="termina_com">Termina com</option>
+            </select>
+            <select id="rc-fonte" class="input select" style="flex:1;min-width:90px">
+              <option value="OC">na OC</option>
+              <option value="PLANO">no Plano</option>
             </select>
             <input id="rc-canal" class="input" placeholder="Sub-canal" list="rc-canais-list"
               style="flex:2;min-width:120px" autocomplete="off">
@@ -609,12 +613,9 @@ const CadCanais = {
       porCanal[r.canal].push(r);
     });
 
-    const tipoLabel = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
-    const canaisSet = new Set(this.regras.map(r => r.canal));
-    const canaisOpts = [...canaisSet].sort().map(c => `<option value="${c}">`).join('');
-
-    const macroLabel = { VA: 'VA', VD: 'VD', RC: 'RC' };
-    const macroColor = { VA: 'var(--accent)', VD: 'var(--blue)', RC: 'var(--green)' };
+    const tipoLabel  = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
+    const macroColor = { VA: 'var(--accent)', VD: 'var(--blue)', RC: 'var(--green)', GT: 'var(--text-3)' };
+    const canaisSet  = new Set(this.regras.map(r => r.canal));
 
     el.innerHTML = Object.keys(porCanal).sort().map(canal => `
       <div class="card card-sm" style="margin-bottom:var(--s3)">
@@ -624,10 +625,13 @@ const CadCanais = {
         </div>
         ${porCanal[canal].map(r => {
           const rid = btoa(r.padrao + '|' + r.tipo).replace(/[+=\/]/g,'_');
+          const fonteLabel = r.fonte === 'PLANO' ? '📋 Plano' : '🔗 OC';
+          const fonteCor   = r.fonte === 'PLANO' ? 'var(--blue)' : 'var(--text-3)';
           return `
           <div id="regra-${rid}" style="padding:6px 0;border-bottom:1px solid var(--border)">
             <div id="view-${rid}" style="display:flex;align-items:center;gap:var(--s2)">
-              <span style="font-size:11px;color:var(--text-3);min-width:80px">${tipoLabel[r.tipo]||r.tipo}</span>
+              <span style="font-size:10px;color:${fonteCor};min-width:52px">${fonteLabel}</span>
+              <span style="font-size:11px;color:var(--text-3);min-width:60px">${tipoLabel[r.tipo]||r.tipo}</span>
               <span style="font-family:var(--font-mono);font-size:12px;color:var(--text);flex:1">${r.padrao}</span>
               <button onclick="CadCanais.editarModo('${rid}')"
                 style="background:none;border:none;cursor:pointer;color:var(--text-3);font-size:13px;padding:0 4px">✏️</button>
@@ -642,6 +646,10 @@ const CadCanais = {
                 <option value="contem" ${r.tipo==='contem'?'selected':''}>Contém</option>
                 <option value="comeca_com" ${r.tipo==='comeca_com'?'selected':''}>Começa com</option>
                 <option value="termina_com" ${r.tipo==='termina_com'?'selected':''}>Termina com</option>
+              </select>
+              <select id="ef-${rid}" class="input select" style="flex:1;min-width:80px;font-size:12px;padding:5px 8px">
+                <option value="OC"    ${(r.fonte||'OC')==='OC'   ?'selected':''}>na OC</option>
+                <option value="PLANO" ${r.fonte==='PLANO'?'selected':''}>no Plano</option>
               </select>
               <input id="ec-${rid}" class="input" value="${r.canal}" list="rc-canais-list"
                 style="flex:2;min-width:100px;padding:5px 8px;font-size:12px" autocomplete="off">
@@ -668,16 +676,17 @@ const CadCanais = {
   },
 
   async salvarEdicao(rid, padraoOrig, tipoOrig) {
-    const novoPadrao  = document.getElementById('ep-' + rid)?.value.trim();
-    const novoTipo    = document.getElementById('et-' + rid)?.value;
-    const novoCanal   = document.getElementById('ec-' + rid)?.value.trim().toUpperCase();
+    const novoPadrao     = document.getElementById('ep-' + rid)?.value.trim();
+    const novoTipo       = document.getElementById('et-' + rid)?.value;
+    const novaFonte      = document.getElementById('ef-' + rid)?.value || 'OC';
+    const novoCanal      = document.getElementById('ec-' + rid)?.value.trim().toUpperCase();
     const novoCanalMacro = document.getElementById('em-' + rid)?.value || '';
     if (!novoPadrao || !novoCanal) { Utils.toast('Preencha todos os campos', 'error'); return; }
     try {
       await API.deletarRegraCanal(padraoOrig, tipoOrig);
-      await API.salvarRegraCanal({ padrao: novoPadrao, tipo: novoTipo, canal: novoCanal, canalMacro: novoCanalMacro });
+      await API.salvarRegraCanal({ padrao: novoPadrao, tipo: novoTipo, fonte: novaFonte, canal: novoCanal, canalMacro: novoCanalMacro });
       const idx = this.regras.findIndex(r => r.padrao === padraoOrig && r.tipo === tipoOrig);
-      if (idx >= 0) this.regras[idx] = { padrao: novoPadrao, tipo: novoTipo, canal: novoCanal, canalMacro: novoCanalMacro };
+      if (idx >= 0) this.regras[idx] = { padrao: novoPadrao, tipo: novoTipo, fonte: novaFonte, canal: novoCanal, canalMacro: novoCanalMacro };
       this.renderLista();
       Utils.toast('Regra atualizada!', 'success');
     } catch { Utils.toast('Erro ao salvar', 'error'); }
@@ -688,14 +697,14 @@ const CadCanais = {
   adicionarRascunho() {
     const padrao     = document.getElementById('rc-padrao').value.trim();
     const tipo       = document.getElementById('rc-tipo').value;
+    const fonte      = document.getElementById('rc-fonte').value || 'OC';
     const canal      = document.getElementById('rc-canal').value.trim().toUpperCase();
     const canalMacro = document.getElementById('rc-canal-macro').value;
     if (!padrao || !canal) { Utils.toast('Preencha padrão e sub-canal', 'error'); return; }
     if (!canalMacro) { Utils.toast('Selecione o Canal Macro', 'error'); return; }
 
-    this._rascunho.push({ padrao, tipo, canal, canalMacro });
+    this._rascunho.push({ padrao, tipo, fonte, canal, canalMacro });
     this._renderRascunho();
-
     document.getElementById('rc-padrao').value = '';
     document.getElementById('rc-canal').value  = '';
   },
@@ -708,7 +717,8 @@ const CadCanais = {
     const tipoLabel = { igual_a: 'igual a', contem: 'contém', comeca_com: 'começa com', termina_com: 'termina com' };
     lista.innerHTML = this._rascunho.map((r, i) => `
       <div style="display:flex;align-items:center;gap:var(--s2);padding:5px 0;border-bottom:1px solid var(--border)">
-        <span style="font-size:10px;color:var(--text-3);min-width:60px">${tipoLabel[r.tipo]}</span>
+        <span style="font-size:10px;color:var(--text-3);min-width:55px">${tipoLabel[r.tipo]}</span>
+        <span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 5px;border-radius:10px">${r.fonte}</span>
         <span style="font-family:var(--font-mono);font-size:11px;color:var(--text);flex:1">${r.padrao}</span>
         <span style="font-size:11px;color:var(--accent)">${r.canal}</span>
         <span style="font-size:10px;background:var(--bg-3);color:var(--text-3);padding:1px 6px;border-radius:10px">${r.canalMacro}</span>
