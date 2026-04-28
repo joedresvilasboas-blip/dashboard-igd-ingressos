@@ -781,6 +781,15 @@ const CadOCs = {
           Operações em massa para todos os eventos. Use com cautela — atualiza a planilha inteira.
         </div>
 
+        <div class="card card-sm" style="margin-bottom:var(--s3);border-color:var(--accent)">
+          <div style="font-size:13px;font-weight:600;color:var(--accent);margin-bottom:var(--s2)">⚡ Reprocessar Tudo</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
+            Atualiza Canal, Canal Macro, Categoria, Evento, Pontos, Semana e Mês em todas as vendas de uma só vez.
+          </div>
+          <button class="btn btn-primary btn-full" id="btn-rep-tudo" onclick="CadOCs.reprocessarTudo()">⚡ Reprocessar Tudo</button>
+          <div id="res-tudo" style="margin-top:var(--s3);font-size:12px;color:var(--text-3)"></div>
+        </div>
+
         <div class="card card-sm" style="margin-bottom:var(--s3)">
           <div style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:var(--s2)">↺ Reprocessar Canais</div>
           <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
@@ -805,6 +814,20 @@ const CadOCs = {
       </div>`;
     m.addEventListener('click', e => { if (e.target === m) m.remove(); });
     document.body.appendChild(m);
+  },
+
+  async reprocessarTudo() {
+    const btn = document.getElementById('btn-rep-tudo');
+    const res_el = document.getElementById('res-tudo');
+    Utils.btnLoading(btn, true);
+    res_el.textContent = 'Processando... pode demorar alguns segundos.';
+    try {
+      const res = await API.post('reprocessar_tudo', {});
+      res_el.innerHTML = `<span style="color:var(--green)">✓ ${res.atualizados} vendas atualizadas!</span>`;
+    } catch {
+      res_el.innerHTML = `<span style="color:var(--red)">Erro ao reprocessar</span>`;
+    }
+    Utils.btnLoading(btn, false);
   },
 
   async reprocessarCanais() {
