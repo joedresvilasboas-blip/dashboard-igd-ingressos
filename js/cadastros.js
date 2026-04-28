@@ -465,6 +465,8 @@ const CadEventos = {
       Utils.toast(`${res.atualizados} OC${res.atualizados !== 1 ? 's' : ''} atualizada${res.atualizados !== 1 ? 's' : ''}!`, 'success');
     } catch { Utils.toast('Erro ao reprocessar', 'error'); }
   },
+
+  async removerPlano(plano) {
     if (!this.eventoAtual) return;
     try {
       await API.deletarPlanoEvento(plano, this.eventoAtual.codigo);
