@@ -217,7 +217,10 @@ const CadEventos = {
           <div style="margin-top:var(--s5)">
             <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s3)">
               <div style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--text-3)">OCs</div>
-              <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddOC()">+ Adicionar</button>
+              <div style="display:flex;gap:var(--s2)">
+                <button class="btn btn-sm btn-secondary" onclick="CadEventos.reprocessarCanais()" title="Reaplica as regras de canal em todas as OCs">↺ Reprocessar Canais</button>
+                <button class="btn btn-sm btn-secondary" onclick="CadEventos.mostrarAddOC()">+ Adicionar</button>
+              </div>
             </div>
             <div id="ev-add-oc" style="display:none;margin-bottom:var(--s3)">
               <textarea id="ev-nova-oc" class="input" rows="4"
@@ -451,7 +454,17 @@ const CadEventos = {
     } catch { Utils.toast('Erro ao salvar OCs', 'error'); }
   },
 
-  async removerPlano(plano) {
+  async reprocessarCanais() {
+    if (!this.eventoAtual) return;
+    try {
+      const res = await API.post('reprocessar_canais_evento', { eventoCod: this.eventoAtual.codigo });
+      // Recarrega OCs com canais atualizados
+      const d = await API.getOCsEvento(this.eventoAtual.codigo);
+      this.ocs = d.ocs || [];
+      this._renderOCs();
+      Utils.toast(`${res.atualizados} OC${res.atualizados !== 1 ? 's' : ''} atualizada${res.atualizados !== 1 ? 's' : ''}!`, 'success');
+    } catch { Utils.toast('Erro ao reprocessar', 'error'); }
+  },
     if (!this.eventoAtual) return;
     try {
       await API.deletarPlanoEvento(plano, this.eventoAtual.codigo);
