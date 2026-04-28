@@ -2,7 +2,7 @@
 
 const API = {
   // Cole aqui a URL do seu Web App do Google Apps Script após o deploy
-  BASE_URL: 'https://script.google.com/macros/s/AKfycbxVFa5p3Ga6EI2cxbpGASHByo6kkCx-c-qyNkXxHzu8LbL5nFcKMB8BIrxThjAx3Gqf/exec',
+  BASE_URL: 'https://script.google.com/macros/s/AKfycbyAVjWE063Wwq-aXLHPey61VoMI8RM2vDICAvl28HR6YK9RtMSVjD6PIRSjE037jb26/exec',
 
   async get(action, params = {}) {
     const url = new URL(this.BASE_URL);
