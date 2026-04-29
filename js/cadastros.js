@@ -61,13 +61,30 @@ const CadVendedores = {
   renderLista() {
     const el = document.getElementById('cad-lista');
     const busca  = (document.getElementById('cad-busca')?.value || '').toLowerCase();
-    const filtro = document.getElementById('cad-filtro')?.value || 'todos';
+    const filtro = document.getElementById('cad-filtro')?.value || 'ativo';
+    const equipe = document.getElementById('cad-equipe')?.value || 'todas';
+
+    // Monta lista de equipes para o select
+    const selEq = document.getElementById('cad-equipe');
+    if (selEq && selEq.options.length <= 1) {
+      const equipes = [...new Set(this.dados.map(v => v.equipe).filter(e => e))].sort();
+      equipes.forEach(eq => {
+        const opt = document.createElement('option');
+        opt.value = eq; opt.textContent = eq;
+        selEq.appendChild(opt);
+      });
+    }
+
     let lista = this.dados
       .filter(v =>
         (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)) &&
-        (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo))
+        (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo)) &&
+        (equipe === 'todas' || v.equipe === equipe)
       )
-      .sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true }));
+      .sort((a, b) => {
+        if (a.ativo !== b.ativo) return a.ativo ? -1 : 1;
+        return a.codigo.localeCompare(b.codigo, undefined, { numeric: true });
+      });
 
     el.innerHTML = lista.map(v => `
       <div class="list-item">
@@ -199,10 +216,13 @@ const CadVendedores = {
         <div style="display:flex;gap:var(--s2);margin-bottom:var(--s3);flex-shrink:0;flex-wrap:wrap">
           <input type="text" id="cad-busca" class="input" placeholder="Buscar..."
             style="flex:1;min-width:120px" oninput="CadVendedores.renderLista()">
-          <select id="cad-filtro" class="input select" style="flex:1;min-width:100px" onchange="CadVendedores.renderLista()">
-            <option value="todos">Todos</option>
+          <select id="cad-filtro" class="input select" style="flex:1;min-width:90px" onchange="CadVendedores.renderLista()">
             <option value="ativo">Ativos</option>
+            <option value="todos">Todos</option>
             <option value="inativo">Inativos</option>
+          </select>
+          <select id="cad-equipe" class="input select" style="flex:1;min-width:90px" onchange="CadVendedores.renderLista()">
+            <option value="todas">Equipes</option>
           </select>
           <button class="btn btn-secondary btn-sm" onclick="CadVendedores.novo()">+ Novo</button>
           <button id="btn-upload-vend" class="btn btn-secondary btn-sm"
