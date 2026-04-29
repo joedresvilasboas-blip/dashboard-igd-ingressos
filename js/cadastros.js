@@ -89,21 +89,35 @@ const CadVendedores = {
       });
 
     el.innerHTML = lista.map(v => `
-      <div class="list-item">
+      <div class="list-item" style="flex-wrap:wrap;gap:var(--s2)">
         <div class="avatar ${v.ativo ? 'avatar-gold' : ''}" style="${!v.ativo ? 'background:var(--bg-3);color:var(--text-3)' : ''}">${Utils.iniciais(v.apelido || v.nome)}</div>
-        <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.apelido || v.nome}${v.apelido && v.apelido !== v.nome ? `<span style="font-size:11px;color:var(--text-3);font-weight:400;margin-left:6px">${v.nome}</span>` : ''}</div>
-          <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe||'—'}</div>
+        <div style="flex:1;min-width:150px">
+          <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.nome}</div>
+          <div style="font-size:11px;color:var(--text-3)">${v.codigo}</div>
         </div>
-        <div style="display:flex;gap:var(--s2);align-items:center">
-          <button class="btn btn-sm ${v.ativo ? 'btn-green' : 'btn-secondary'}"
-            onclick="CadVendedores.toggleAtivo('${v.codigo}',${v.ativo})"
-            style="${!v.ativo ? 'color:var(--text-3)' : ''}">
-            ${v.ativo ? '● Ativo' : '○ Inativo'}
-          </button>
-          <button class="btn btn-sm btn-secondary" onclick="CadVendedores.editar('${v.codigo}')">✏️</button>
-        </div>
+        <input class="input" placeholder="Apelido" value="${v.apelido||''}"
+          style="flex:1;min-width:100px;max-width:160px;padding:4px 8px;font-size:12px"
+          onblur="CadVendedores.salvarCampo('${v.codigo}','apelido',this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()">
+        <input class="input" placeholder="Equipe" value="${v.equipe||''}"
+          style="flex:1;min-width:100px;max-width:140px;padding:4px 8px;font-size:12px"
+          onblur="CadVendedores.salvarCampo('${v.codigo}','equipe',this.value)"
+          onkeydown="if(event.key==='Enter')this.blur()">
+        <button class="btn btn-sm ${v.ativo ? 'btn-green' : 'btn-secondary'}"
+          onclick="CadVendedores.toggleAtivo('${v.codigo}',${v.ativo})"
+          style="${!v.ativo ? 'color:var(--text-3)' : ''}">
+          ${v.ativo ? '● Ativo' : '○ Inativo'}
+        </button>
       </div>`).join('') || '<div class="empty"><div class="empty-title">Nenhum vendedor</div></div>';
+  },
+
+  async salvarCampo(codigo, campo, valor) {
+    const v = this.dados.find(x => x.codigo === codigo);
+    if (!v || v[campo] === valor.trim()) return;
+    v[campo] = valor.trim();
+    try {
+      await API.salvarVendedor({ ...v });
+    } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
   async toggleAtivo(codigo, ativoAtual) {
