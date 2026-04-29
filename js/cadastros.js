@@ -43,7 +43,7 @@ const CadVendedores = {
   dados: [],
 
   async abrir() {
-    this.modal = this._criarModal('Vendedores');
+    this.modal = this._criarModal();
     document.body.appendChild(this.modal);
     await this.carregar();
   },
@@ -60,20 +60,39 @@ const CadVendedores = {
 
   renderLista() {
     const el = document.getElementById('cad-lista');
-    const busca = (document.getElementById('cad-busca')?.value || '').toLowerCase();
-    const lista = this.dados.filter(v =>
-      !busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)
+    const busca  = (document.getElementById('cad-busca')?.value || '').toLowerCase();
+    const filtro = document.getElementById('cad-filtro')?.value || 'todos';
+    let lista = this.dados.filter(v =>
+      (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)) &&
+      (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo))
     );
 
     el.innerHTML = lista.map(v => `
       <div class="list-item">
-        <div class="avatar avatar-gold">${Utils.iniciais(v.nome)}</div>
+        <div class="avatar ${v.ativo ? 'avatar-gold' : ''}" style="${!v.ativo ? 'background:var(--bg-3);color:var(--text-3)' : ''}">${Utils.iniciais(v.nome)}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600" class="truncate">${v.nome}</div>
-          <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe || '—'}</div>
+          <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.nome}</div>
+          <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe||'—'} · <span style="color:${v.ativo ? 'var(--green)' : 'var(--text-3)'}">${v.ativo ? 'Ativo' : 'Inativo'}</span></div>
         </div>
-        <button class="btn btn-sm btn-secondary" onclick="CadVendedores.editar('${v.codigo}')">Editar</button>
+        <div style="display:flex;gap:var(--s2)">
+          <button class="btn btn-sm ${v.ativo ? 'btn-danger' : 'btn-green'}"
+            onclick="CadVendedores.toggleAtivo('${v.codigo}',${v.ativo})">
+            ${v.ativo ? 'Inativar' : 'Ativar'}
+          </button>
+          <button class="btn btn-sm btn-secondary" onclick="CadVendedores.editar('${v.codigo}')">✏️</button>
+        </div>
       </div>`).join('') || '<div class="empty"><div class="empty-title">Nenhum vendedor</div></div>';
+  },
+
+  async toggleAtivo(codigo, ativoAtual) {
+    const v = this.dados.find(x => x.codigo === codigo);
+    if (!v) return;
+    try {
+      await API.salvarVendedor({ ...v, ativo: !ativoAtual });
+      v.ativo = !ativoAtual;
+      this.renderLista();
+      Utils.toast(v.ativo ? 'Ativado!' : 'Inativado!', 'success');
+    } catch { Utils.toast('Erro', 'error'); }
   },
 
   editar(codigo) {
@@ -94,27 +113,28 @@ const CadVendedores = {
       <h4 style="margin-bottom:var(--s4)">${v.codigo ? 'Editar' : 'Novo'} Vendedor</h4>
       <div class="input-group">
         <label class="input-label">Código</label>
-        <input id="f-codigo" class="input" value="${v.codigo || ''}" placeholder="Ex: V001">
+        <input id="f-codigo" class="input" value="${v.codigo||''}" placeholder="Ex: V001" ${v.codigo ? 'readonly style="opacity:.6"' : ''}>
       </div>
       <div class="input-group">
         <label class="input-label">Nome</label>
-        <input id="f-nome" class="input" value="${v.nome || ''}" placeholder="Nome completo">
+        <input id="f-nome" class="input" value="${v.nome||''}" placeholder="Nome completo">
       </div>
       <div class="input-group">
         <label class="input-label">Equipe</label>
-        <input id="f-equipe" class="input" value="${v.equipe || ''}" placeholder="Ex: HUSKIES">
+        <input id="f-equipe" class="input" value="${v.equipe||''}" placeholder="Ex: HUSKIES">
       </div>
       <div class="flex gap-2">
         <button class="btn btn-secondary" style="flex:1" onclick="document.getElementById('cad-form').style.display='none'">Cancelar</button>
-        <button class="btn btn-primary" style="flex:1" onclick="CadVendedores.salvar()">Salvar</button>
+        <button class="btn btn-primary" style="flex:1" onclick="CadVendedores.salvar('${v.ativo !== undefined ? v.ativo : false}')">Salvar</button>
       </div>`;
   },
 
-  async salvar() {
+  async salvar(ativoAtual) {
     const dados = {
       codigo: document.getElementById('f-codigo').value.trim(),
       nome:   document.getElementById('f-nome').value.trim(),
       equipe: document.getElementById('f-equipe').value.trim(),
+      ativo:  ativoAtual === 'true' || ativoAtual === true,
     };
     if (!dados.codigo || !dados.nome) { Utils.toast('Preencha os campos obrigatórios', 'error'); return; }
     try {
@@ -125,21 +145,71 @@ const CadVendedores = {
     } catch { Utils.toast('Erro ao salvar', 'error'); }
   },
 
-  _criarModal(titulo) {
+  // Upload CSV
+  onFileVendedor(input) {
+    const file = input.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      const linhas = this._parsearCSV(e.target.result);
+      if (!linhas.length) { Utils.toast('Nenhum vendedor encontrado no CSV', 'error'); return; }
+      const btn = document.getElementById('btn-upload-vend');
+      Utils.btnLoading(btn, true);
+      try {
+        const res = await API.uploadVendedores(linhas);
+        Utils.toast(`${res.inseridos} adicionados · ${res.ignorados} já existiam`, 'success');
+        await this.carregar();
+      } catch { Utils.toast('Erro ao importar', 'error'); }
+      Utils.btnLoading(btn, false);
+      input.value = '';
+    };
+    reader.readAsText(file, 'utf-8');
+  },
+
+  _parsearCSV(texto) {
+    const linhas = texto.split('\n').filter(l => l.trim());
+    if (linhas.length < 2) return [];
+    const sep = linhas[0].includes(';') ? ';' : ',';
+    const cab = linhas[0].split(sep).map(h => h.trim().replace(/"/g,''));
+    const idxCodigo = cab.findIndex(h => h.toLowerCase().includes('código') || h.toLowerCase().includes('codigo') || h.toLowerCase() === 'code');
+    const idxNome   = cab.findIndex(h => h.toLowerCase() === 'nome' || h.toLowerCase() === 'name');
+    if (idxCodigo < 0 || idxNome < 0) return [];
+    return linhas.slice(1).map(l => {
+      const cols = l.split(sep).map(c => c.trim().replace(/"/g,''));
+      return { codigo: cols[idxCodigo]||'', nome: cols[idxNome]||'' };
+    }).filter(l => l.codigo && l.nome);
+  },
+
+  _criarModal() {
     const m = document.createElement('div');
     m.className = 'modal-overlay';
     m.id = 'modal-cad';
     m.innerHTML = `
-      <div class="modal" style="max-height:90vh">
+      <div class="modal" style="max-height:90vh;display:flex;flex-direction:column">
         <div class="modal-handle"></div>
-        <div class="flex items-center justify-between" style="margin-bottom:var(--s4)">
-          <div class="modal-title">${titulo}</div>
+        <div class="flex items-center justify-between" style="margin-bottom:var(--s4);flex-shrink:0">
+          <div class="modal-title">Vendedores</div>
           <button class="btn btn-sm btn-secondary" onclick="document.getElementById('modal-cad').remove()">✕</button>
         </div>
-        <input type="text" id="cad-busca" class="input" placeholder="Buscar..." style="margin-bottom:var(--s4)" oninput="CadVendedores.renderLista()">
-        <button class="btn btn-primary btn-full" style="margin-bottom:var(--s4)" onclick="CadVendedores.novo()">+ Novo Vendedor</button>
-        <div id="cad-form" style="display:none;margin-bottom:var(--s4)"></div>
-        <div id="cad-lista"></div>
+
+        <!-- Ações -->
+        <div style="display:flex;gap:var(--s2);margin-bottom:var(--s3);flex-shrink:0;flex-wrap:wrap">
+          <input type="text" id="cad-busca" class="input" placeholder="Buscar..."
+            style="flex:1;min-width:120px" oninput="CadVendedores.renderLista()">
+          <select id="cad-filtro" class="input select" style="flex:1;min-width:100px" onchange="CadVendedores.renderLista()">
+            <option value="todos">Todos</option>
+            <option value="ativo">Ativos</option>
+            <option value="inativo">Inativos</option>
+          </select>
+          <button class="btn btn-secondary btn-sm" onclick="CadVendedores.novo()">+ Novo</button>
+          <button id="btn-upload-vend" class="btn btn-secondary btn-sm"
+            onclick="document.getElementById('vend-file').click()">📥 CSV</button>
+          <input type="file" id="vend-file" accept=".csv" style="display:none"
+            onchange="CadVendedores.onFileVendedor(this)">
+        </div>
+
+        <div id="cad-form" style="display:none;margin-bottom:var(--s3);flex-shrink:0"></div>
+        <div id="cad-lista" style="overflow-y:auto;flex:1"></div>
       </div>`;
     m.addEventListener('click', e => { if (e.target === m) m.remove(); });
     return m;
