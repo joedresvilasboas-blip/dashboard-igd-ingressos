@@ -62,22 +62,25 @@ const CadVendedores = {
     const el = document.getElementById('cad-lista');
     const busca  = (document.getElementById('cad-busca')?.value || '').toLowerCase();
     const filtro = document.getElementById('cad-filtro')?.value || 'todos';
-    let lista = this.dados.filter(v =>
-      (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)) &&
-      (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo))
-    );
+    let lista = this.dados
+      .filter(v =>
+        (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)) &&
+        (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo))
+      )
+      .sort((a, b) => a.codigo.localeCompare(b.codigo, undefined, { numeric: true }));
 
     el.innerHTML = lista.map(v => `
       <div class="list-item">
         <div class="avatar ${v.ativo ? 'avatar-gold' : ''}" style="${!v.ativo ? 'background:var(--bg-3);color:var(--text-3)' : ''}">${Utils.iniciais(v.nome)}</div>
         <div style="flex:1;min-width:0">
           <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.nome}</div>
-          <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe||'—'} · <span style="color:${v.ativo ? 'var(--green)' : 'var(--text-3)'}">${v.ativo ? 'Ativo' : 'Inativo'}</span></div>
+          <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe||'—'}</div>
         </div>
-        <div style="display:flex;gap:var(--s2)">
-          <button class="btn btn-sm ${v.ativo ? 'btn-danger' : 'btn-green'}"
-            onclick="CadVendedores.toggleAtivo('${v.codigo}',${v.ativo})">
-            ${v.ativo ? 'Inativar' : 'Ativar'}
+        <div style="display:flex;gap:var(--s2);align-items:center">
+          <button class="btn btn-sm ${v.ativo ? 'btn-green' : 'btn-secondary'}"
+            onclick="CadVendedores.toggleAtivo('${v.codigo}',${v.ativo})"
+            style="${!v.ativo ? 'color:var(--text-3)' : ''}">
+            ${v.ativo ? '● Ativo' : '○ Inativo'}
           </button>
           <button class="btn btn-sm btn-secondary" onclick="CadVendedores.editar('${v.codigo}')">✏️</button>
         </div>
