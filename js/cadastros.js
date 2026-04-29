@@ -64,20 +64,22 @@ const CadVendedores = {
     const filtro = document.getElementById('cad-filtro')?.value || 'ativo';
     const equipe = document.getElementById('cad-equipe')?.value || 'todas';
 
-    // Monta lista de equipes para o select
+    // Monta equipes condicionadas ao status selecionado
     const selEq = document.getElementById('cad-equipe');
-    if (selEq && selEq.options.length <= 1) {
-      const equipes = [...new Set(this.dados.map(v => v.equipe).filter(e => e))].sort();
-      equipes.forEach(eq => {
-        const opt = document.createElement('option');
-        opt.value = eq; opt.textContent = eq;
-        selEq.appendChild(opt);
-      });
+    if (selEq) {
+      const equipesVisiveis = [...new Set(
+        this.dados
+          .filter(v => filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo))
+          .map(v => v.equipe).filter(e => e)
+      )].sort();
+      const valorAtual = selEq.value;
+      selEq.innerHTML = '<option value="todas">Equipes</option>' +
+        equipesVisiveis.map(eq => `<option value="${eq}" ${eq === valorAtual ? 'selected' : ''}>${eq}</option>`).join('');
     }
 
     let lista = this.dados
       .filter(v =>
-        (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca)) &&
+        (!busca || v.nome.toLowerCase().includes(busca) || v.codigo.toLowerCase().includes(busca) || (v.apelido||'').toLowerCase().includes(busca)) &&
         (filtro === 'todos' || (filtro === 'ativo' && v.ativo) || (filtro === 'inativo' && !v.ativo)) &&
         (equipe === 'todas' || v.equipe === equipe)
       )
@@ -88,9 +90,9 @@ const CadVendedores = {
 
     el.innerHTML = lista.map(v => `
       <div class="list-item">
-        <div class="avatar ${v.ativo ? 'avatar-gold' : ''}" style="${!v.ativo ? 'background:var(--bg-3);color:var(--text-3)' : ''}">${Utils.iniciais(v.nome)}</div>
+        <div class="avatar ${v.ativo ? 'avatar-gold' : ''}" style="${!v.ativo ? 'background:var(--bg-3);color:var(--text-3)' : ''}">${Utils.iniciais(v.apelido || v.nome)}</div>
         <div style="flex:1;min-width:0">
-          <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.nome}</div>
+          <div style="font-size:13px;font-weight:600;color:${v.ativo ? 'var(--text)' : 'var(--text-3)'}" class="truncate">${v.apelido || v.nome}${v.apelido && v.apelido !== v.nome ? `<span style="font-size:11px;color:var(--text-3);font-weight:400;margin-left:6px">${v.nome}</span>` : ''}</div>
           <div style="font-size:11px;color:var(--text-3)">${v.codigo} · ${v.equipe||'—'}</div>
         </div>
         <div style="display:flex;gap:var(--s2);align-items:center">
@@ -140,6 +142,10 @@ const CadVendedores = {
         <input id="f-nome" class="input" value="${v.nome||''}" placeholder="Nome completo">
       </div>
       <div class="input-group">
+        <label class="input-label">Apelido <span style="color:var(--text-3);font-weight:400">(aparece no ranking)</span></label>
+        <input id="f-apelido" class="input" value="${v.apelido||''}" placeholder="Ex: João Silva">
+      </div>
+      <div class="input-group">
         <label class="input-label">Equipe</label>
         <input id="f-equipe" class="input" value="${v.equipe||''}" placeholder="Ex: HUSKIES">
       </div>
@@ -151,10 +157,11 @@ const CadVendedores = {
 
   async salvar(ativoAtual) {
     const dados = {
-      codigo: document.getElementById('f-codigo').value.trim(),
-      nome:   document.getElementById('f-nome').value.trim(),
-      equipe: document.getElementById('f-equipe').value.trim(),
-      ativo:  ativoAtual === 'true' || ativoAtual === true,
+      codigo:  document.getElementById('f-codigo').value.trim(),
+      nome:    document.getElementById('f-nome').value.trim(),
+      apelido: document.getElementById('f-apelido').value.trim(),
+      equipe:  document.getElementById('f-equipe').value.trim(),
+      ativo:   ativoAtual === 'true' || ativoAtual === true,
     };
     if (!dados.codigo || !dados.nome) { Utils.toast('Preencha os campos obrigatórios', 'error'); return; }
     try {
@@ -224,7 +231,6 @@ const CadVendedores = {
           <select id="cad-equipe" class="input select" style="flex:1;min-width:90px" onchange="CadVendedores.renderLista()">
             <option value="todas">Equipes</option>
           </select>
-          <button class="btn btn-secondary btn-sm" onclick="CadVendedores.novo()">+ Novo</button>
           <button id="btn-upload-vend" class="btn btn-secondary btn-sm"
             onclick="document.getElementById('vend-file').click()">📥 CSV</button>
           <input type="file" id="vend-file" accept=".csv" style="display:none"
