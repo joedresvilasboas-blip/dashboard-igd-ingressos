@@ -42,6 +42,7 @@ const API = {
   // Configurações
   getConfig() { return this.get('config'); },
   salvarVendedor(dados) { return this.post('salvar_vendedor', dados); },
+  uploadVendedores(linhas) { return this.post('upload_vendedores', { linhas }); },
   salvarEquipe(dados) { return this.post('salvar_equipe', dados); },
   salvarEvento(dados) { return this.post('salvar_evento', dados); },
   salvarCalendario(dados) { return this.post('salvar_calendario', dados); },
