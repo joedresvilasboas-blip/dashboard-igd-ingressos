@@ -924,9 +924,35 @@ const CadOCs = {
           </button>
           <div id="res-cats" style="margin-top:var(--s3);font-size:12px;color:var(--text-3)"></div>
         </div>
+
+        <div class="card card-sm" style="margin-bottom:var(--s3);border-color:#e85d5d">
+          <div style="font-size:13px;font-weight:600;color:#e85d5d;margin-bottom:var(--s2)">🧹 Remover Duplicatas</div>
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:var(--s4)">
+            Remove vendas com ID duplicado, mantendo somente a primeira ocorrência de cada venda.
+          </div>
+          <button class="btn btn-full" id="btn-rem-dup" style="background:#e85d5d;color:#fff;border:none" onclick="CadOCs.removerDuplicatas()">
+            🧹 Remover Duplicatas
+          </button>
+          <div id="res-dup" style="margin-top:var(--s3);font-size:12px;color:var(--text-3)"></div>
+        </div>
       </div>`;
     m.addEventListener('click', e => { if (e.target === m) m.remove(); });
     document.body.appendChild(m);
+  },
+
+  async removerDuplicatas() {
+    const btn    = document.getElementById('btn-rem-dup');
+    const res_el = document.getElementById('res-dup');
+    if (!confirm('Isso vai apagar vendas duplicadas permanentemente. Confirma?')) return;
+    Utils.btnLoading(btn, true);
+    res_el.textContent = 'Processando...';
+    try {
+      const res = await API.post('remover_duplicatas', {});
+      res_el.innerHTML = `<span style="color:var(--green)">✓ ${res.removidas} linha${res.removidas !== 1 ? 's' : ''} removida${res.removidas !== 1 ? 's' : ''}!</span>`;
+    } catch {
+      res_el.innerHTML = `<span style="color:#e85d5d">Erro ao remover</span>`;
+    }
+    Utils.btnLoading(btn, false);
   },
 
   async reprocessarTudo() {
