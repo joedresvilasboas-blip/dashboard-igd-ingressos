@@ -152,7 +152,7 @@ const Ranking = {
 
     let linhas = [`🏆 *RANKING ${tipoLabel} - ${sem} ${periodo}* 🏆`, '', '📌 *Regra de pontuação:*', 'Upgrade: 1 pt | Normal: 2 pts | VIP: 3 pts', ''];
     lista.forEach((v, i) => {
-      const nm = this.tipo === 'individual' ? v.nome : v.equipe;
+      const nm = this.tipo === 'individual' ? (v.apelido || v.nome) : v.equipe;
       const pts = (v.pontos < 10 ? '0' : '') + v.pontos + ' pt' + (v.pontos !== 1 ? 's' : '');
       const hc = (v.headcounts < 10 ? '0' : '') + v.headcounts + ' HC';
       linhas.push(`${i + 1}. — ${pts} | ${hc} — ${nm}`);
